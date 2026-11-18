@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Shredder" />
+    <title>Shoshone Shredder</title>
+    <!-- The styles arrive with the game's code (main.ts imports them), which takes a moment over wifi: until main.ts
+         marks the body styled, show only the background, never the page's raw text -->
+    <style>
+      html, body { margin: 0; height: 100%; background: #e9e6df; }
+      body:not(.styled) > * { visibility: hidden; }
+    </style>
+  </head>
+  <body>
+    <canvas id="game"></canvas>
+    <div id="hud"></div>
+    <div id="lab"></div>
+    <div id="hub" hidden></div>
+    <div id="who">
+      <h1>Shoshone Shredder</h1>
+      <p>Who's riding?</p>
+      <div class="riders"></div>
+      <p class="loading-note">Rolling out…</p>
+      <div class="backup">
+        <button class="open">💾 Backup</button>
+        <div class="panel">
+          <p>Copy the save to keep it safe, or paste one here and Restore.</p>
+          <textarea spellcheck="false" autocapitalize="off" autocomplete="off" rows="4"></textarea>
+          <div class="row"><button class="copy">Copy</button><button class="restore">Restore</button></div>
+          <p class="note"></p>
+        </div>
+      </div>
+    </div>
+    <div id="turn">Turn the iPad sideways to ride</div>
+    <script type="module" src="/src/game/main.ts"></script>
+  </body>
+</html>

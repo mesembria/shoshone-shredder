@@ -1,0 +1,47 @@
+/* Big, round and readable from arm's length on an iPad. */
+:root { --ink: #1f2a33; --paper: #f7f3ea; --good: #2a9d8f; --meh: #e9a23b; --bad: #d9534f; }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #e9e6df; font-family: ui-rounded, 'SF Pro Rounded', system-ui, sans-serif; color: var(--ink); }
+body { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; overscroll-behavior: none; }
+#game { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; touch-action: none; }
+
+#hud { position: fixed; inset: 0; pointer-events: none; }
+#hud .score { position: absolute; top: max(16px, env(safe-area-inset-top)); right: 24px; font-size: 34px; font-weight: 800; color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,.35); }
+#hud .combo { position: absolute; top: max(18px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); font-size: 26px; font-weight: 800; color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,.35); white-space: nowrap; }
+#hud .combo.pop { animation: pop .25s ease-out; }
+#hud .callout { position: absolute; top: 26%; left: 50%; transform: translate(-50%, -50%); text-align: center; opacity: 0; }
+#hud .callout b { display: block; font-size: 56px; font-weight: 900; color: #fff; -webkit-text-stroke: 2px var(--ink); paint-order: stroke fill; }
+#hud .callout small { display: block; font-size: 22px; font-weight: 800; color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,.4); }
+#hud .callout[data-tone='good'] b { color: #bff3e9; }
+#hud .callout[data-tone='meh'] b { color: #ffe2a8; }
+#hud .callout[data-tone='bad'] b { color: #ffc2bf; }
+#hud .callout.show { animation: callout 1.1s ease-out forwards; }
+#hud .bank { position: absolute; top: 64px; right: 24px; font-size: 28px; font-weight: 900; color: #ffe066; opacity: 0; text-shadow: 0 2px 0 rgba(0,0,0,.35); }
+#hud .bank.fly { animation: fly .9s ease-out forwards; }
+#hud .dazed { position: absolute; inset: 0; opacity: 0; background: radial-gradient(ellipse at center, rgba(255,255,255,0) 35%, rgba(255,236,170,.75) 100%); transition: opacity .2s; }
+#hud .thumb { position: absolute; left: -36px; top: -36px; width: 72px; height: 72px; border-radius: 50%; border: 3px solid rgba(255,255,255,.7); background: rgba(255,255,255,.12); opacity: 0; }
+/* Again: getting up on your own is the normal way back, so this is a quiet chip low in the middle in the banner's dark
+   glass (no paper button, no shadow), and it eases in a moment after the crash rather than popping up at you */
+#hud .again { position: absolute; bottom: max(20px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); padding: 7px 14px; border: 0; border-radius: 16px; background: rgba(31, 42, 51, .42); color: rgba(255, 255, 255, .85); font: 700 16px ui-rounded, system-ui, sans-serif; opacity: 0; pointer-events: none; transition: opacity .2s; }
+#hud .again.on { opacity: 1; pointer-events: auto; transition: opacity .5s .5s; }
+#hud .debug { position: absolute; top: 8px; left: 8px; margin: 0; padding: 4px 8px; font: 12px ui-monospace, monospace; background: rgba(0,0,0,.45); color: #fff; border-radius: 6px; }
+
+#picker { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; background: linear-gradient(#7aa6de, #f4e6d2); }
+#picker h1 { margin: 0; font-size: 56px; font-weight: 900; color: #fff; text-shadow: 0 3px 0 rgba(0,0,0,.25); }
+#picker p { margin: 0 0 12px; font-size: 24px; font-weight: 700; }
+#picker .bikes { display: flex; gap: 24px; }
+#picker button { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 22px 30px; border: 0; border-radius: 24px; background: var(--paper); color: var(--ink); font: 800 24px ui-rounded, system-ui, sans-serif; box-shadow: 0 5px 0 rgba(0,0,0,.2); }
+#picker button i { width: 120px; height: 18px; border-radius: 9px; }
+#picker button:active { transform: translateY(3px); box-shadow: 0 2px 0 rgba(0,0,0,.2); }
+#picker .loading-note { display: none; }
+#picker.loading .bikes { opacity: .5; pointer-events: none; }
+#picker.loading .loading-note { display: block; }
+
+#turn { display: none; }
+@media (orientation: portrait) and (pointer: coarse) {
+  #turn { display: flex; position: fixed; inset: 0; align-items: center; justify-content: center; background: var(--paper); font-size: 30px; font-weight: 800; z-index: 10; }
+}
+
+@keyframes pop { from { transform: translateX(-50%) scale(1.25); } to { transform: translateX(-50%) scale(1); } }
+@keyframes callout { 0% { opacity: 0; transform: translate(-50%, -50%) scale(.6); } 15% { opacity: 1; transform: translate(-50%, -50%) scale(1.08); } 25% { transform: translate(-50%, -50%) scale(1); } 75% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -60%); } }
+@keyframes fly { 0% { opacity: 0; transform: translateY(16px); } 20% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(-24px); } }

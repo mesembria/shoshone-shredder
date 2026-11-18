@@ -1,0 +1,28 @@
+{
+  "name": "shoshone-shredder",
+  "version": "1.0.0",
+  "description": "A mountain-bike game for two brothers, set in their neighborhood.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "check": "tsc --noEmit",
+    "release:setup": "npx --yes wrangler@3.114.17 pages project create shoshone-shredder --production-branch main",
+    "release": "npm run check && npm test && npm run build && npx --yes wrangler@3.114.17 pages deploy dist --project-name shoshone-shredder --branch main",
+    "deploy:preview": "npm run check && npm run build && npx --yes wrangler@3.114.17 pages deploy dist --project-name shoshone-shredder --branch preview"
+  },
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@dimforge/rapier3d-compat": "0.14.0",
+    "three": "0.170.0"
+  },
+  "devDependencies": {
+    "@types/three": "0.170.0",
+    "typescript": "5.6.3",
+    "vite": "5.4.10",
+    "vitest": "2.1.4"
+  },
+  "private": true,
+  "type": "module"
+}

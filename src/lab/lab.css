@@ -1,0 +1,100 @@
+/* Feel lab overlays: the tuning drawer, speed lines and readouts. */
+#lab { position: fixed; inset: 0; pointer-events: none; }
+#hud .debug { top: 64px; }
+
+#lab .speedlines {
+  position: absolute; inset: -25%; opacity: 0; will-change: transform, opacity;
+  background: repeating-conic-gradient(from 0deg at 50% 50%, rgba(255,255,255,0) 0deg 3deg, rgba(255,255,255,.6) 3deg 3.35deg, rgba(255,255,255,0) 3.35deg 6.5deg);
+  -webkit-mask-image: radial-gradient(ellipse 50% 50% at center, transparent 55%, #000 95%);
+  mask-image: radial-gradient(ellipse 50% 50% at center, transparent 55%, #000 95%);
+}
+
+/* the speed ring, top left: segments light in order, colored by zone (unlit ones dimmed), mph and the zone word inside */
+#lab .speed { position: absolute; top: max(8px, env(safe-area-inset-top)); left: 14px; width: 190px; height: 180px; pointer-events: none; }
+#lab .speed svg { position: absolute; inset: 0; overflow: visible; }
+#lab .speed .seg { fill-opacity: .28; stroke: #1f2a33; stroke-opacity: .25; stroke-width: 2.5; }
+#lab .speed .seg.lit { fill-opacity: 1; stroke-opacity: .55; }
+#lab .speed .seg.pedal { fill: #6cc24a; }
+#lab .speed .seg.sprint { fill: #ffd23f; }
+#lab .speed .seg.hill { fill: #f39a2b; }
+#lab .speed .seg.over { fill: #e8483b; }
+#lab .speed .read { position: absolute; left: 0; right: 0; top: 50px; text-align: center; color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,.45); }
+#lab .speed .num { display: block; font: 900 58px/1 ui-rounded, system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+#lab .speed .unit { font: 800 17px ui-rounded, system-ui, sans-serif; }
+#lab .speed .word { position: absolute; left: 0; right: 0; top: 150px; text-align: center; font: 900 16px ui-rounded, system-ui, sans-serif; text-shadow: 0 1px 0 rgba(0,0,0,.6); color: #6cc24a; }
+#lab .speed .word[data-zone='sprint'] { color: #ffd23f; }
+#lab .speed .word[data-zone='hill'] { color: #f39a2b; }
+#lab .speed .word[data-zone='over'] { color: #e8483b; }
+/* the last jump's readout (and debug lines), under the ring */
+#lab .lab-read { position: absolute; top: calc(max(8px, env(safe-area-inset-top)) + 184px); left: 24px; color: #fff; font-weight: 700; font-size: 15px; text-shadow: 0 2px 0 rgba(0,0,0,.35); }
+
+#lab .tune-toggle, #lab .tune button { pointer-events: auto; border: 0; border-radius: 14px; background: var(--paper); color: var(--ink); font: 800 17px ui-rounded, system-ui, sans-serif; padding: 10px 14px; box-shadow: 0 3px 0 rgba(0,0,0,.2); }
+/* under the score: away from where thumbs rest when holding the iPad, and clear of the trick names up top */
+#lab .tune-toggle { position: absolute; top: calc(max(16px, env(safe-area-inset-top)) + 56px); right: 16px; }
+#lab .tune-toggle[hidden], #lab .swap[hidden] { display: none; }
+#lab .swap small { display: block; font-size: 12px; font-weight: 700; opacity: .65; text-align: right; }
+/* Swap bike: under Tune, on the right and high up, away from the stick and the Jump button */
+#lab .swap { pointer-events: auto; position: absolute; top: calc(max(16px, env(safe-area-inset-top)) + 112px); right: 16px; border: 0; border-radius: 14px; background: var(--paper); color: var(--ink); font: 800 17px ui-rounded, system-ui, sans-serif; padding: 10px 14px; box-shadow: 0 3px 0 rgba(0,0,0,.2); }
+#lab .tune {
+  pointer-events: auto; touch-action: pan-y; -webkit-user-select: none; user-select: none;
+  position: absolute; top: 0; right: 0; bottom: 0; width: min(440px, 94vw); overflow-y: auto; -webkit-overflow-scrolling: touch;
+  background: rgba(247, 243, 234, .97); color: var(--ink); padding: max(12px, env(safe-area-inset-top)) 16px 40px; box-shadow: -6px 0 24px rgba(0,0,0,.25);
+}
+#lab .tune[hidden] { display: none; }
+#lab .tune-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 10px; }
+#lab .tune-head b { font-size: 22px; }
+#lab .tune-head span { display: flex; gap: 6px; }
+#lab .tune-out { margin: 0 0 12px; padding: 8px 10px; background: #fff; border-radius: 8px; font: 14px/1.35 ui-monospace, Menlo, monospace; white-space: pre-wrap; -webkit-user-select: text; user-select: text; }
+#lab .tune-go { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 12px; }
+#lab .tune-go button { font-size: 15px; padding: 9px 6px; background: #fff; }
+#lab .tune details { border-top: 1px solid rgba(0,0,0,.12); padding: 6px 0; }
+#lab .tune summary { font-size: 19px; font-weight: 800; padding: 8px 0; }
+#lab .tune label { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 2px 10px; padding: 6px 0; font-size: 15px; font-weight: 600; }
+#lab .tune label output { font-variant-numeric: tabular-nums; font-weight: 800; }
+#lab .tune label output.changed { color: #c0392b; }
+#lab .tune input[type=range] { grid-column: 1 / -1; width: 100%; height: 30px; accent-color: #2a9d8f; touch-action: pan-x; }
+
+/* Controls you can see. Pure pictures except Brake, which is a real button; touches elsewhere reach the canvas. */
+#hud .thumb.left { display: none; } /* the stick below shows the left thumb */
+#lab .ctl > * { position: absolute; left: 0; top: 0; will-change: transform; }
+#lab .ctl .stick { width: 160px; height: 160px; margin: -80px 0 0 -80px; border-radius: 50%; border: 3px solid rgba(255,255,255,.8); background: rgba(31,42,51,.2); opacity: .75; transition: opacity .15s; }
+#lab .ctl .stick.on { opacity: 1; }
+#lab .ctl .stick .zone { display: none; position: absolute; left: 50%; width: 96px; margin-left: -48px; border-radius: 12px; background: rgba(110, 210, 120, .55); box-shadow: 0 0 0 2px rgba(255,255,255,.7); }
+#lab .ctl .stick.loose .zone { display: block; }
+#lab .ctl .stick .knob { position: absolute; left: 50%; top: 50%; width: 66px; height: 66px; margin: -33px 0 0 -33px; border-radius: 50%; background: var(--paper); box-shadow: 0 3px 0 rgba(0,0,0,.25); }
+/* energy: a 140° arc over the top of the stick, outside its edge where a thumb doesn't cover it; it empties from the
+   right. --e is the tank as an angle (360deg = full), scaled into the arc */
+#lab .ctl .stick .fuel { --e: 360deg; position: absolute; inset: -18px; border-radius: 50%; pointer-events: none;
+  background: conic-gradient(from -70deg, #ffd23f 0 calc(var(--e) * 140 / 360), rgba(31,42,51,.45) 0 140deg, transparent 0);
+  -webkit-mask: radial-gradient(circle, transparent 86px, #000 87px 97px, transparent 98px); mask: radial-gradient(circle, transparent 86px, #000 87px 97px, transparent 98px); }
+#lab .ctl .stick .fuel.low { background: conic-gradient(from -70deg, #e8483b 0 calc(var(--e) * 140 / 360), rgba(31,42,51,.45) 0 140deg, transparent 0); }
+#lab .ctl .stick .fuel.burnt { animation: fuel-flash .4s steps(2, jump-none) infinite; }
+@keyframes fuel-flash { 50% { background: conic-gradient(from -70deg, #e8483b 0 140deg, transparent 0); } }
+#lab .ctl .stick .ar { position: absolute; top: 50%; transform: translateY(-50%); color: #fff; font-size: 20px; text-shadow: 0 1px 0 rgba(0,0,0,.4); }
+#lab .ctl .stick .ar.l { left: 10px; }
+#lab .ctl .stick .ar.r { right: 10px; }
+#lab .ctl .word, #lab .ctl .tricks { position: absolute; left: 50%; transform: translateX(-50%); white-space: nowrap; color: #fff; font: 800 16px ui-rounded, system-ui, sans-serif; text-shadow: 0 2px 0 rgba(0,0,0,.4); }
+#lab .ctl .tricks.above { bottom: calc(100% + 8px); }
+#lab .ctl .word.up { bottom: calc(100% + 30px); } /* clear of the energy arc */
+#lab .ctl .word.down, #lab .ctl .tricks.below { top: calc(100% + 8px); }
+#lab .ctl .jumpbtn { width: 128px; height: 128px; margin: -64px 0 0 -64px; }
+#lab .ctl .jumpbtn .fill { position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(#fff calc(var(--c, 0) * 360deg), rgba(255,255,255,.3) 0); }
+#lab .ctl .face { position: absolute; display: grid; place-items: center; border-radius: 50%; box-shadow: 0 4px 0 rgba(0,0,0,.28); transition: transform .06s; }
+#lab .ctl .face b { font: 900 22px ui-rounded, system-ui, sans-serif; letter-spacing: .04em; }
+#lab .ctl .jumpbtn .face { inset: 8px; background: #ffd23f; color: var(--ink); }
+#lab .ctl .on .face { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,.28); }
+#lab .ctl .tricks { padding: 3px 10px; border-radius: 12px; background: rgba(31,42,51,.6); white-space: pre; text-align: center; line-height: 1.35; }
+#lab .ctl .tricks:empty { display: none; }
+#lab .ctl .jumpbtn.air .tricks { background: rgba(31,42,51,.78); font-size: 17px; }
+#lab .ctl .jumpbtn.pump .face { background: #6cc24a; }
+#lab .ctl .jumpbtn.pump .fill { background: #fff; }
+#lab .ctl .brakebtn { pointer-events: auto; width: 124px; height: 124px; margin: -62px 0 0 -62px; padding: 0; border: 0; background: none; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+#lab .ctl .brakebtn .face { inset: 16px; background: var(--bad); color: #fff; }
+#lab .ctl .brakebtn .face b { font-size: 18px; }
+/* pulse until the first touch, so the eye finds them */
+#lab .ctl .hint::after { content: ''; position: absolute; inset: 0; border-radius: 50%; border: 4px solid #fff; animation: ctl-pulse 1.3s ease-out infinite; pointer-events: none; }
+#lab .ctl .brakebtn.hint::after { inset: 16px; }
+@keyframes ctl-pulse { from { transform: scale(1); opacity: .9; } to { transform: scale(1.5); opacity: 0; } }
+
+/* speed wobble: red edges that pulse as you get close to the wipeout */
+#lab .wobble-edge { position: absolute; inset: 0; pointer-events: none; opacity: 0; box-shadow: inset 0 0 90px 30px rgba(232, 72, 59, .85); }

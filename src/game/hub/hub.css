@@ -1,0 +1,194 @@
+/* The hub: Who's riding?, the map and an area's sheet. Chunky toy look: cream panels, yellow buttons, dark green ink,
+   every tap target at least 44 px. */
+#hub, #who { --cream: #fff8e8; --yellow: #ffd84a; --yellow-edge: #b8941a; --ink: #2f3d2e; color: var(--ink); }
+#hub button, #who button { touch-action: manipulation; font-family: ui-rounded, 'SF Pro Rounded', system-ui, sans-serif; color: var(--ink); cursor: pointer; }
+
+/* Who's riding? (layout in game.css; the palette here) */
+#who .rider { background: var(--cream); }
+#who .go { background: var(--yellow); color: var(--ink); box-shadow: 0 5px 0 var(--yellow-edge); min-height: 64px; }
+#who .rename { min-width: 48px; min-height: 48px; background: #fff; box-shadow: 0 3px 0 rgba(0,0,0,.15); }
+
+/* the map: a 4:3 picture covering the screen; pins sit at fractions of it */
+#hub { position: fixed; inset: 0; overflow: hidden; background: #8fae5a; z-index: 4; }
+#hub[hidden] { display: none; }
+#hub .map { position: absolute; left: 50%; top: 50%; width: max(100vw, 133.334vh); height: max(100vh, 75vw); transform: translate(-50%, -50%); }
+#hub .map svg, #hub .map .art { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+#hub .map .art[hidden] { display: none; }
+
+#hub .pin { position: absolute; transform: translate(-50%, -100%); padding: 0 0 14px; border: 0; background: none; min-width: 44px; min-height: 44px; }
+#hub .pin::after { content: ''; position: absolute; left: 50%; bottom: 0; width: 16px; height: 16px; margin-left: -8px; border-radius: 50%; background: var(--yellow); border: 3px solid #fff; box-shadow: 0 2px 0 rgba(0,0,0,.25); }
+#hub .pin .b { display: block; padding: 10px 18px; border-radius: 18px; background: var(--yellow); box-shadow: 0 5px 0 var(--yellow-edge); font-size: 24px; font-weight: 900; line-height: 1.15; white-space: nowrap; }
+#hub .pin small { display: block; font-size: 15px; font-weight: 800; opacity: .75; }
+#hub .pin.home .b { background: #f2f0eb; box-shadow: 0 5px 0 #9a958a; }
+#hub .pin.home::after { background: #f2f0eb; }
+#hub .pin.shop .b { background: #7fb3b2; box-shadow: 0 5px 0 #4f8483; }
+#hub .pin.shop::after { background: #7fb3b2; }
+#hub .pin.area .b { font-size: 28px; padding: 12px 22px; }
+#hub .pin:active .b { transform: translateY(3px); box-shadow: 0 2px 0 var(--yellow-edge); }
+#hub .pin.home:active .b { box-shadow: 0 2px 0 #9a958a; }
+#hub .pin.shop:active .b { box-shadow: 0 2px 0 #4f8483; }
+
+/* difficulty, as at a real trailhead (this and the challenge list below are shared with the ride's list and ring
+   cards, in #lab) */
+:is(#hub, #lab) .sym { display: inline-block; min-width: 1em; text-align: center; }
+:is(#hub, #lab) .sym.green { color: #2f8f3a; }
+:is(#hub, #lab) .sym.blue { color: #2f6fb5; }
+:is(#hub, #lab) .sym.black { color: #1d1d1d; }
+
+/* the top bar */
+#hub .bar { position: absolute; top: max(14px, env(safe-area-inset-top)); left: max(14px, env(safe-area-inset-left)); right: max(14px, env(safe-area-inset-right)); display: flex; align-items: center; gap: 12px; pointer-events: none; }
+#hub .pill { display: inline-flex; align-items: center; min-height: 48px; padding: 0 18px; border: 0; border-radius: 99px; background: var(--cream); box-shadow: 0 4px 0 rgba(0,0,0,.18); font-size: 22px; font-weight: 900; white-space: nowrap; pointer-events: auto; }
+#hub .bar .who { margin-right: auto; overflow: hidden; text-overflow: ellipsis; }
+#hub .bar .cogs { font-variant-numeric: tabular-nums; }
+#hub .bar .switch { background: #fff; }
+#hub .bar .switch:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,.18); }
+
+#hub .note { position: absolute; left: 50%; bottom: max(28px, env(safe-area-inset-bottom)); transform: translateX(-50%); padding: 14px 24px; border-radius: 20px; background: var(--cream); box-shadow: 0 5px 0 rgba(0,0,0,.2); font-size: 24px; font-weight: 900; }
+#hub .note[hidden], #hub .scrim[hidden], #hub .sheet[hidden] { display: none; }
+
+/* an area's sheet */
+#hub .scrim { position: absolute; inset: 0; background: rgba(47, 61, 46, .35); }
+#hub .sheet { position: absolute; inset: max(20px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left)); max-width: 1120px; margin: 0 auto; overflow-y: auto; -webkit-overflow-scrolling: touch; touch-action: pan-y; padding: 16px 24px 28px; border-radius: 30px; background: var(--cream); box-shadow: 0 8px 0 rgba(0,0,0,.22), 0 20px 50px rgba(0,0,0,.3); }
+#hub .sheet-head { display: flex; align-items: center; gap: 14px; margin-bottom: 6px; }
+#hub .sheet-head .ui-sign { --sign-h: 64px; margin-right: auto; }
+#hub .sheet-head .pill { gap: 6px; background: #fff; box-shadow: none; }
+#hub .sheet .close { width: 56px; height: 56px; border: 0; border-radius: 18px; background: #fff; box-shadow: 0 4px 0 rgba(0,0,0,.15); font-size: 26px; font-weight: 900; }
+:is(#hub, #lab) .groups { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 22px; align-items: start; }
+#hub .sheet h3 { margin: 12px 0 6px; font-size: 24px; font-weight: 900; }
+:is(#hub, #lab) .row { display: flex; align-items: center; gap: 10px; min-height: 64px; margin-bottom: 6px; padding: 8px 10px; border-radius: 14px; background: #fff; }
+:is(#hub, #lab) .row .what { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+:is(#hub, #lab) .row b { font-size: 20px; font-weight: 900; line-height: 1.15; }
+/* a slot per star: gold won; stone with its price and the cog under it */
+:is(#hub, #lab) .row .meta { display: flex; align-items: flex-start; gap: 6px; }
+:is(#hub, #lab) .slot { display: inline-flex; flex-direction: column; align-items: center; width: 42px; line-height: 1; font-size: 26px; }
+:is(#hub, #lab) .slot small { display: flex; align-items: center; margin-top: 1px; font-size: 12px; font-weight: 900; color: #8a7a4a; }
+:is(#hub, #lab) .pay { align-self: center; padding: 1px 9px; border-radius: 10px; background: #fff1a8; font-size: 16px; font-weight: 900; }
+/* locked: quiet, dashed, just the names and what opens them */
+:is(#hub, #lab) .row.locked { min-height: 0; padding: 7px 10px; background: transparent; border: 2px dashed #e4d8bd; }
+:is(#hub, #lab) .row.locked b { color: #9aa0a5; font-size: 18px; }
+:is(#hub, #lab) .row.locked .ui-hill { opacity: .6; }
+:is(#hub, #lab) .row .lock { font-size: 14px; font-weight: 800; color: #8a6d3b; }
+:is(#hub, #lab) .row .go { min-width: 76px; min-height: 52px; border: 0; border-radius: 16px; background: var(--yellow); box-shadow: 0 4px 0 var(--yellow-edge); font-size: 22px; font-weight: 900; }
+:is(#hub, #lab) .row .go:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--yellow-edge); }
+:is(#hub, #lab) .warps { display: flex; flex-wrap: wrap; gap: 10px; }
+:is(#hub, #lab) .warps button { min-height: 48px; padding: 0 16px; border: 0; border-radius: 14px; background: #fff; box-shadow: 0 3px 0 rgba(0,0,0,.15); font-size: 18px; font-weight: 800; }
+:is(#hub, #lab) .warps button:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0,0,0,.15); }
+
+/* ---- the Garage: a pegboard wall and concrete floor behind the stand, a warm work light on the bike. The stand fills
+   the left; the tabs and their panel sit on the right like a folder on the bench. */
+#hub .garage { --side: min(440px, 40vw); --edge: max(14px, env(safe-area-inset-right)); position: absolute; inset: 0; overflow: hidden;
+  background:
+    radial-gradient(ellipse 46% 52% at calc((100% - var(--side)) / 2) 50%, rgba(255, 232, 178, .5), rgba(255, 232, 178, 0) 72%),
+    linear-gradient(rgba(0,0,0,0) 69%, #6e675d 69%, #8a8174 74%, #7a7166),
+    radial-gradient(circle, rgba(30, 20, 14, .42) 2.6px, rgba(0,0,0,0) 3.4px) 0 0 / 28px 28px,
+    linear-gradient(#6d594a, #5b4a40 60%, #4d3f36); }
+#hub .garage .stage { position: absolute; left: 0; top: 0; bottom: 0; right: calc(var(--side) + var(--edge)); }
+#hub .garage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+#hub .garage canvas:active { cursor: grabbing; }
+#hub .garage .bar .title { margin-right: auto; overflow: hidden; text-overflow: ellipsis; }
+#hub .garage .bar .back { background: #fff; }
+#hub .garage .bar .back:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,.18); }
+
+/* hotspot dots: a 48 px tap area round a glowing yellow core that breathes; round the far side they fade */
+#hub .garage .dots { position: absolute; inset: 0; pointer-events: none; }
+#hub .garage .dot { position: absolute; left: -24px; top: -24px; width: 48px; height: 48px; padding: 0; border: 0; background: none; pointer-events: auto; transition: opacity .2s; }
+#hub .garage .dot[hidden] { display: none; }
+#hub .garage .dot i { position: absolute; left: 12px; top: 12px; width: 24px; height: 24px; box-sizing: border-box; border-radius: 50%; background: var(--yellow); border: 3px solid #fff; box-shadow: 0 0 0 5px rgba(255, 216, 74, .45), 0 0 18px 6px rgba(255, 216, 74, .55); animation: glow 1.8s ease-in-out infinite; }
+#hub .garage .dot span { position: absolute; left: 50%; bottom: 46px; transform: translateX(-50%); padding: 4px 12px; border-radius: 12px; background: var(--ink); color: var(--cream); font-size: 17px; font-weight: 900; white-space: nowrap; opacity: 0; transition: opacity .15s; pointer-events: none; }
+#hub .garage .dot.sel i { background: var(--ink); border-color: var(--yellow); animation: none; box-shadow: 0 0 0 5px rgba(255, 216, 74, .8), 0 0 22px 8px rgba(255, 216, 74, .6); }
+#hub .garage .dot.sel span { opacity: 1; }
+#hub .garage .dot.behind { opacity: .3; }
+@keyframes glow { 50% { box-shadow: 0 0 0 9px rgba(255, 216, 74, .25), 0 0 26px 10px rgba(255, 216, 74, .4); } }
+@media (prefers-reduced-motion: reduce) { #hub .garage .dot i { animation: none; } }
+
+#hub .garage .hint { position: absolute; left: 50%; bottom: max(24px, env(safe-area-inset-bottom)); transform: translateX(-50%); padding: 6px 14px; border-radius: 99px; background: rgba(47, 61, 46, .55); color: var(--cream); font-size: 17px; font-weight: 800; pointer-events: none; white-space: nowrap; }
+#hub .garage .rider-toggle { position: absolute; right: 18px; bottom: max(14px, env(safe-area-inset-bottom)); width: 60px; height: 60px; border: 0; border-radius: 50%; background: var(--cream); box-shadow: 0 4px 0 rgba(0,0,0,.25); font-size: 30px; }
+#hub .garage .rider-toggle.off { background: rgba(255, 248, 232, .55); filter: grayscale(1); }
+#hub .garage .rider-toggle:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,.25); }
+
+/* your bikes, hung down the wall on the left */
+#hub .garage .bikes { position: absolute; left: max(14px, env(safe-area-inset-left)); top: calc(max(14px, env(safe-area-inset-top)) + 64px); display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+#hub .garage .bike { display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 14px 0 10px; border: 3px solid transparent; border-radius: 16px; background: rgba(255, 248, 232, .78); box-shadow: 0 4px 0 rgba(0,0,0,.25); font-size: 17px; font-weight: 900; }
+#hub .garage .bike i { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 1px 2px rgba(0,0,0,.3); }
+#hub .garage .bike.on { background: var(--cream); border-color: var(--yellow); }
+#hub .garage .ride-this { margin-top: 4px; min-height: 52px; padding: 0 20px; border: 0; border-radius: 16px; background: var(--yellow); box-shadow: 0 5px 0 var(--yellow-edge); font-size: 20px; font-weight: 900; }
+#hub .garage .ride-this:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--yellow-edge); }
+#hub .garage .note { left: calc((100% - var(--side) - var(--edge)) / 2); bottom: 96px; white-space: nowrap; }
+#hub .garage .riding { padding: 4px 6px 0; color: var(--cream); font-size: 18px; font-weight: 900; text-shadow: 0 1px 2px rgba(0,0,0,.4); }
+
+/* the folder: tabs joined to a cream panel */
+#hub .garage .side { position: absolute; top: calc(max(14px, env(safe-area-inset-top)) + 62px); right: var(--edge); bottom: max(14px, env(safe-area-inset-bottom)); width: var(--side); display: flex; flex-direction: column; }
+#hub .garage .tabs { display: flex; gap: 6px; padding: 0 10px; }
+#hub .garage .tab { flex: 1; min-height: 56px; border: 0; border-radius: 18px 18px 0 0; background: #e6d9b8; box-shadow: inset 0 -4px 0 rgba(0,0,0,.07); font-size: 20px; font-weight: 900; color: rgba(47, 61, 46, .75); }
+#hub .garage .tab.on { background: var(--cream); color: var(--ink); box-shadow: inset 0 5px 0 var(--yellow); }
+#hub .garage .panel { flex: 0 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; touch-action: pan-y; padding: 14px 22px 22px; border-radius: 26px; background: var(--cream); box-shadow: 0 8px 0 rgba(0,0,0,.22), 0 20px 50px rgba(0,0,0,.3); }
+#hub .garage .panel h2 { margin: 2px 0 2px; font-size: 28px; font-weight: 900; line-height: 1.1; }
+#hub .garage .panel h3 { margin: 14px 0 4px; font-size: 19px; font-weight: 900; }
+#hub .garage .lead { margin: 4px 0 12px; font-size: 17px; font-weight: 700; color: #5b6670; }
+
+/* Parts: the five slots, then a slot's card */
+#hub .garage .slots { display: flex; flex-direction: column; gap: 8px; }
+#hub .garage .slotrow { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; min-height: 60px; padding: 8px 16px; border: 0; border-radius: 16px; background: #fff; box-shadow: 0 3px 0 rgba(0,0,0,.12); text-align: left; }
+#hub .garage .slotrow .sl { font-size: 14px; font-weight: 800; color: #8a6d3b; }
+#hub .garage .slotrow b { font-size: 20px; font-weight: 900; }
+#hub .garage .slotrow:active, #hub .garage .opt:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0,0,0,.12); }
+#hub .garage .card-head { display: flex; align-items: center; gap: 10px; }
+#hub .garage .to-slots { width: 48px; height: 48px; border: 0; border-radius: 14px; background: #fff; box-shadow: 0 3px 0 rgba(0,0,0,.12); font-size: 30px; font-weight: 900; line-height: 1; }
+#hub .garage .opts { display: flex; gap: 8px; margin: 12px 0 4px; }
+#hub .garage .opt { flex: 1; min-width: 0; min-height: 72px; padding: 8px 6px; border: 3px solid #ddd1b2; border-radius: 16px; background: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; text-align: center; }
+#hub .garage .opt b { font-size: 16px; font-weight: 900; line-height: 1.1; }
+#hub .garage .opt small { font-size: 13px; font-weight: 800; color: #5b6670; }
+#hub .garage .opt.shop { border-style: dashed; border-color: #c9bb94; background: #fbf4e2; }
+#hub .garage .opt.sel { border-style: solid; border-color: var(--yellow); background: #fff1a8; }
+#hub .garage .detail .spec { margin: 0; font-size: 17px; font-weight: 800; font-variant-numeric: tabular-nums; }
+#hub .garage .detail .does { margin: 4px 0 10px; font-size: 17px; font-weight: 700; color: #5b6670; }
+#hub .garage .fit, #hub .garage .buy { width: 100%; min-height: 60px; margin-top: 14px; border: 0; border-radius: 18px; background: var(--yellow); box-shadow: 0 5px 0 var(--yellow-edge); font-size: 23px; font-weight: 900; }
+#hub .garage .fit:active, #hub .garage .buy:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--yellow-edge); }
+#hub .garage .buy[disabled] { background: #e6d9b8; box-shadow: 0 5px 0 #c9bb94; color: rgba(47, 61, 46, .6); cursor: default; transform: none; }
+#hub .garage .onnow { margin-top: 14px; padding: 14px; border-radius: 18px; background: #e3f1d6; color: #2f6b2a; font-size: 20px; font-weight: 900; text-align: center; }
+
+/* the bars: teal for what it has, green for a gain, red stripes for a loss */
+#hub .garage .stat { display: grid; grid-template-columns: 72px 1fr 46px; align-items: center; gap: 10px; min-height: 30px; font-size: 17px; font-weight: 900; }
+#hub .garage .stat .track { position: relative; height: 14px; border-radius: 7px; background: #e6d9b8; overflow: hidden; }
+#hub .garage .stat .track i { position: absolute; top: 0; bottom: 0; }
+#hub .garage .stat .fill { left: 0; border-radius: 7px; background: #5fa3a2; }
+#hub .garage .stat .up { background: #5cb83c; }
+#hub .garage .stat .down { background: repeating-linear-gradient(45deg, #e0573f 0 4px, #f4a090 4px 8px); }
+#hub .garage .stat .sv { text-align: right; font-variant-numeric: tabular-nums; font-size: 16px; }
+#hub .garage .stat.gain .sv { color: #3d8f26; }
+#hub .garage .stat.loss .sv { color: #c4432c; }
+
+/* Paint */
+#hub .garage .swatches { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+#hub .garage .swatch { display: flex; flex-direction: column; align-items: center; gap: 6px; min-height: 96px; padding: 10px 4px 8px; border: 3px solid transparent; border-radius: 20px; background: #fff; box-shadow: 0 3px 0 rgba(0,0,0,.12); }
+#hub .garage .swatch i { width: 52px; height: 52px; border-radius: 50%; box-shadow: inset 0 -6px 0 rgba(0,0,0,.18), 0 2px 3px rgba(0,0,0,.2); }
+#hub .garage .swatch small { font-size: 15px; font-weight: 900; }
+#hub .garage .swatch.on { border-color: var(--ink); background: #fff1a8; }
+#hub .garage .swatch:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0,0,0,.12); }
+
+/* Specs: a bike-shop sheet, the rows the parts change marked yellow */
+#hub .garage .spec-sheet { width: 100%; margin: 6px 0 4px; border-collapse: collapse; font-size: 17px; font-variant-numeric: tabular-nums; }
+#hub .garage .spec-sheet th, #hub .garage .spec-sheet td { padding: 6px 8px; border-top: 2px solid rgba(47, 61, 46, .1); vertical-align: top; }
+#hub .garage .spec-sheet th { width: 40%; text-align: left; font-weight: 800; color: #5b6670; }
+#hub .garage .spec-sheet td { text-align: right; font-weight: 900; }
+#hub .garage .spec-sheet td small { display: block; font-size: 14px; font-weight: 700; color: #5b6670; }
+#hub .garage .spec-sheet tr.changed td, #hub .garage .spec-sheet tr.changed th { background: #fff1a8; }
+#hub .garage .spec-sheet.parts { margin-top: 10px; }
+#hub .garage .statgroup h3 { margin: 14px 0 2px; }
+
+/* ---- the Shop: the Garage's look (it wears the .garage class too); only the list of parts is new */
+#hub .shop .bikes { gap: 10px; }
+#hub .shop .panel .buy { display: block; width: 100%; min-height: 56px; margin: 10px 0 6px; border: 0; border-radius: 16px; background: var(--yellow); box-shadow: 0 5px 0 var(--yellow-edge); font-size: 21px; font-weight: 900; }
+#hub .shop .panel .buy:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 2px 0 var(--yellow-edge); }
+#hub .shop .panel .buy:disabled { background: #e6dcc0; box-shadow: 0 5px 0 #cfc3a0; color: #5b6670; }
+#hub .shop .panel .onnow { margin: 10px 0 6px; min-height: 56px; display: flex; align-items: center; justify-content: center; border-radius: 16px; background: #d9efcf; font-size: 20px; font-weight: 900; color: #2c6a2c; }
+#hub .shop .bikehead { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 52px; padding: 0 14px; border: 3px solid transparent; border-radius: 16px; background: #fff; box-shadow: 0 3px 0 rgba(0,0,0,.12); font-size: 22px; font-weight: 900; text-align: left; }
+#hub .shop .bikehead i { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 1px 2px rgba(0,0,0,.3); }
+#hub .shop .bikehead.on { border-color: var(--yellow); background: #fff1a8; }
+#hub .shop .bikegroup + .bikegroup { margin-top: 22px; }
+#hub .shop .part { margin: 8px 0; padding: 10px 14px 6px; border: 3px solid #ddd1b2; border-radius: 16px; background: #fff; }
+#hub .shop .part.on { border-color: var(--yellow); }
+#hub .shop .part .ph { display: flex; flex-direction: column; }
+#hub .shop .part .ph b { font-size: 20px; font-weight: 900; }
+#hub .shop .part .ph small { font-size: 14px; font-weight: 800; color: #8a6d3b; }
+#hub .shop .part .does { margin: 4px 0 6px; font-size: 16px; font-weight: 700; color: #5b6670; }

@@ -1,0 +1,122 @@
+/* The game's screens: who's riding, the menu button, the spots sheet, the spot card,
+   challenge banner, countdown and results. Big, chunky and readable from arm's length on an iPad. */
+#who { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; background: linear-gradient(#7aa6de, #f4e6d2); z-index: 5; }
+#who h1 { margin: 0; font-size: 56px; font-weight: 900; color: #fff; text-shadow: 0 3px 0 rgba(0,0,0,.25); }
+#who > p { margin: 0 0 12px; font-size: 24px; font-weight: 700; }
+#who .riders { display: flex; gap: 28px; }
+#who .rider { width: 360px; padding: 20px; border-radius: 26px; background: var(--paper); box-shadow: 0 5px 0 rgba(0,0,0,.2); display: flex; flex-direction: column; gap: 14px; }
+#who .name { display: flex; align-items: center; gap: 10px; min-height: 48px; }
+#who .name b { flex: 1; font-size: 32px; font-weight: 900; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#who .name input { flex: 1; min-width: 0; font: 900 28px ui-rounded, system-ui, sans-serif; padding: 6px 10px; border: 3px solid var(--good); border-radius: 12px; -webkit-user-select: text; user-select: text; }
+#who .bikes { display: flex; gap: 10px; }
+#who .bikes button { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 10px; border: 3px solid transparent; border-radius: 16px; background: #fff; font: 800 17px ui-rounded, system-ui, sans-serif; color: var(--ink); }
+#who .bikes button.on { border-color: var(--good); }
+#who .bikes i { width: 100%; height: 14px; border-radius: 7px; }
+#who button { touch-action: manipulation; }
+#who .go { padding: 16px; border: 0; border-radius: 18px; background: var(--good); color: #fff; font: 900 28px ui-rounded, system-ui, sans-serif; box-shadow: 0 4px 0 rgba(0,0,0,.2); }
+#who .rename { width: 48px; height: 48px; border: 0; border-radius: 14px; background: #fff; font-size: 22px; }
+#who .go:active, #who .bikes button:active { transform: translateY(3px); }
+#who .loading-note { display: none; font-size: 22px; font-weight: 700; }
+#who .backup { margin-top: 14px; display: flex; flex-direction: column; align-items: center; gap: 8px; max-width: 560px; width: 90%; }
+#who .backup .open { padding: 8px 16px; border: 0; border-radius: 12px; background: rgba(255,255,255,.7); font: 700 16px ui-rounded, system-ui, sans-serif; color: var(--ink); }
+#who .backup .panel { display: none; width: 100%; flex-direction: column; gap: 8px; padding: 12px; border-radius: 16px; background: var(--paper); }
+#who .backup.show .panel { display: flex; }
+#who .backup .panel p { margin: 0; font-size: 16px; font-weight: 600; }
+#who .backup textarea { width: 100%; box-sizing: border-box; font: 13px ui-monospace, monospace; -webkit-user-select: text; user-select: text; }
+#who .backup .row { display: flex; gap: 10px; }
+#who .backup .row button { flex: 1; padding: 10px; border: 0; border-radius: 12px; background: var(--good); color: #fff; font: 800 18px ui-rounded, system-ui, sans-serif; }
+#who.loading .riders { opacity: .5; pointer-events: none; }
+#who.loading .loading-note { display: block; }
+
+/* top right, under the score: Swap (from lab.css; Tune above it only with ?tune=1), then 🗺 Map and the area list */
+#lab .menu { position: absolute; top: calc(max(16px, env(safe-area-inset-top)) + 184px); right: 16px; display: flex; gap: 8px; }
+#lab .menu button, #lab .sheet button, #lab .card button, #lab .b-stop {
+  pointer-events: auto; touch-action: manipulation; border: 0; border-radius: 14px; background: var(--paper); color: var(--ink);
+  font: 800 19px ui-rounded, system-ui, sans-serif; padding: 10px 16px; box-shadow: 0 3px 0 rgba(0,0,0,.2);
+}
+#lab button:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0,0,0,.2); }
+#lab button:disabled { opacity: .45; }
+#lab button.primary { background: var(--good); color: #fff; }
+
+/* the sheet: the area's challenge list */
+#lab .sheet[hidden], #lab .card[hidden], #lab .runhud[hidden], #lab .runhud [hidden], #lab .b-stop[hidden], #lab .count-medals[hidden] { display: none; }
+#lab .sheet {
+  pointer-events: auto; touch-action: pan-y; position: absolute; inset: max(16px, env(safe-area-inset-top)) 50% max(16px, env(safe-area-inset-bottom));
+  transform: translateX(-50%); width: min(760px, 94vw); overflow-y: auto; -webkit-overflow-scrolling: touch;
+  border-radius: 26px; padding: 20px 24px 28px; box-shadow: 0 10px 40px rgba(0,0,0,.35);
+}
+#lab .sheet-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+#lab .sheet-head .ui-sign { --sign-h: 64px; margin-right: auto; }
+#lab .sheet-head .close { min-height: 52px; padding: 0 20px; font-size: 21px; }
+#lab .sheet h3 { margin: 12px 0 6px; font-size: 22px; font-weight: 900; }
+#lab .sheet.area { width: min(1120px, 96vw); }
+#lab .sheet-head .area-stars { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 99px; background: #fff; font-size: 20px; font-weight: 900; }
+#lab .sheet-head .area-stars .ui-star, #hub .sheet-head .area-stars .ui-star { font-size: 26px; }
+/* the area's challenge list and the ring cards share the hub's rows (hub.css); the cream toy palette here */
+#lab .sheet, #lab .card { --cream: #fff8e8; --yellow: #ffd84a; --yellow-edge: #b8941a; --ink: #2f3d2e; background: var(--cream); color: var(--ink); }
+#lab .sheet button, #lab .card button { background: #fff; }
+#lab .sheet button.primary, #lab .card button.primary { background: var(--yellow); color: var(--ink); box-shadow: 0 4px 0 var(--yellow-edge); }
+
+/* the card that pops up in a spot's ring, and the results card */
+#lab .card {
+  pointer-events: auto; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(600px, 92vw);
+  border-radius: 26px; padding: 22px 24px; box-shadow: 0 10px 40px rgba(0,0,0,.35); text-align: center;
+}
+#lab .card h2 { margin: 0 0 4px; font-size: 34px; font-weight: 900; }
+#lab .card .bigstars { margin-top: 12px; font-size: 76px; line-height: 1; letter-spacing: -4px; }
+#lab .card .frozen { margin-top: 10px; }
+#lab .card .frozen .ui-strip .bar { width: 170px; }
+#lab .card p { margin: 6px 0; font-size: 20px; font-weight: 700; }
+#lab .card .new { color: var(--good); font-weight: 900; }
+#lab .card .earn { display: inline-block; margin: 10px 0 0; padding: 6px 18px; border-radius: 16px; background: #fff1a8; font-size: 30px; font-weight: 900; }
+#lab .card .earn.none { background: #f2ece0; color: #8a8f94; }
+#lab .card .how-close { color: #8a6d3b; }
+#lab .card .to-next { color: #8a6d3b; }
+#lab .card .opened { color: var(--good); font-weight: 900; }
+/* a ring's card: the sign half over the card's top edge, the how-to big, the three medals, trick chips, Go */
+#lab .card { --sign-h: 72px; }
+#lab .card > .ui-sign, #lab .card .ring > .ui-sign { display: flex; width: fit-content; margin: calc(var(--sign-h) / -2 - 22px) auto 0; }
+#lab .card .tabs { display: flex; justify-content: center; gap: 8px; margin: calc(var(--sign-h) / -2 - 22px) 0 10px; }
+#lab .card .tabs + .ring > .ui-sign { margin-top: 0; }
+#lab .card .tab { font-size: 17px; padding: 8px 12px; opacity: .6; }
+#lab .card .tab[aria-pressed='true'] { opacity: 1; box-shadow: 0 3px 0 var(--yellow-edge); }
+#lab .card .tell { margin: 14px 0 18px; font-size: 23px; font-weight: 800; line-height: 1.3; }
+#lab .card .chips { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px; margin-top: 14px; }
+#lab .card .chips small { width: 100%; font-size: 15px; font-weight: 800; color: #8a7f68; }
+#lab .card .chip { padding: 3px 10px; border-radius: 10px; background: #2f3d2e; color: #fff; font-size: 15px; font-weight: 700; }
+#lab .card .chip b { color: #ffd23f; }
+#lab .card .chips .tip { width: 100%; margin: 4px 0 0; font-size: 17px; font-weight: 800; }
+#lab .card .ring .go { display: block; margin: 18px auto 0; padding: 14px 56px; font-size: 26px; }
+#lab .card .ring-lock { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 16px 0 0; padding-top: 12px; border-top: 2px dashed #e4d8bd; color: #8a8f94; font-size: 17px; font-weight: 800; }
+#lab .card .ring-lock span { color: #8a6d3b; }
+#lab .card > .ui-sign + .ring-lock { margin-top: 14px; border-top: 0; }
+#lab .card .ring-lock .ui-hill { opacity: .6; }
+#lab .card .buttons { display: flex; justify-content: center; gap: 12px; margin-top: 16px; }
+#lab .card .buttons button { font-size: 22px; padding: 12px 22px; white-space: nowrap; }
+
+/* while a challenge runs */
+/* while a challenge runs (from the 3-2-1): the sign with the challenge's name, the goal tag under it, then the
+   next-star strip (pieces.css), with a red seconds chip beside it in the last 10 s of a points challenge */
+#lab .runhud { position: absolute; top: max(12px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; pointer-events: none; }
+#lab .runhud .tag { margin-top: -6px; padding: 5px 16px 6px; border-radius: 0 0 12px 12px; background: #f6e7c8; color: var(--ink); font: 900 19px ui-rounded, system-ui, sans-serif; box-shadow: 0 3px 0 rgba(0,0,0,.2); display: flex; align-items: center; gap: 10px; white-space: nowrap; }
+#lab .runhud .tag[hidden] { display: none; } /* (the rule above would beat the general [hidden] one) */
+#lab .runhud .pips { color: #2e7d32; letter-spacing: 3px; font-size: 18px; }
+#lab .runhud .pips:empty { display: none; }
+#lab .runhud .strip-slot { margin-top: 10px; display: flex; align-items: center; }
+#lab .runhud .chip-left { position: absolute; top: calc(100% - 46px); left: calc(100% + 10px); padding: 6px 12px; border-radius: 14px; background: #e8483b; color: #fff; font: 900 22px ui-rounded, system-ui, sans-serif; font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* Stop, top right where the menu sits (the menu, the free-ride score and Map hide during a run and its 3-2-1) */
+#lab .b-stop { position: absolute; top: calc(max(16px, env(safe-area-inset-top)) + 184px); right: 16px; }
+body.in-run #lab .menu, body.in-run #hud .score { display: none; }
+/* the trick names and the multiplied total: under the strip as outlined text (in free ride too, the same spot) */
+#hud .combo { top: calc(max(16px, env(safe-area-inset-top)) + 168px); color: #fff; text-shadow: none; -webkit-text-stroke: 6px #1f2a33; paint-order: stroke fill; font-size: 28px; font-weight: 900; }
+#lab .countdown { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); font-size: 140px; font-weight: 900; color: #fff; -webkit-text-stroke: 4px var(--ink); paint-order: stroke fill; opacity: 0; }
+#lab .countdown.pop { animation: count .6s ease-out; }
+/* what each star needs and pays, under the 3-2-1 (no pop: it stays for the whole countdown) */
+#lab .count-medals { position: absolute; top: 52%; left: 50%; transform: translateX(-50%); width: min(600px, 90vw); padding: 12px; border-radius: 24px; background: rgba(31,42,51,.55); pointer-events: none; }
+@keyframes count { 0% { opacity: 0; transform: translate(-50%, -50%) scale(1.6); } 20% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 80% { opacity: 1; } 100% { opacity: 0; } }
+
+/* names floating over the rings in the park */
+#lab .spot-label { position: absolute; left: 0; top: 0; padding: 4px 12px; border-radius: 14px; background: rgba(31, 42, 51, .7); color: #fff; font-size: 18px; font-weight: 800; white-space: nowrap; will-change: transform; }
+#lab .spot-label .stars { font-size: 16px; }
+#lab .spot-label.locked { background: rgba(80, 80, 80, .6); color: #ddd; }
+#lab .spot-label[hidden] { display: none; }

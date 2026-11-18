@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Shredder" />
+    <title>Shoshone Shredder</title>
+  </head>
+  <body>
+    <canvas id="game"></canvas>
+    <div id="hud"></div>
+    <div id="picker">
+      <h1>Shoshone Shredder</h1>
+      <p>Pick your bike</p>
+      <div class="bikes">
+        <button type="button" data-bike="bolinas"><i style="background: #c8b48c"></i>Tan Bolinas Ridge</button>
+        <button type="button" data-bike="bayview"><i style="background: #26272b"></i>Black Bayview Trail</button>
+      </div>
+      <p class="loading-note">Rolling out…</p>
+    </div>
+    <div id="turn">Turn the iPad sideways to ride</div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

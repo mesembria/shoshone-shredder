@@ -1,0 +1,52 @@
+// Screenshots: pump track, pumping, a backflip and a 360 mid-air (slow motion), driven with real touches.
+import { spawn } from 'node:child_process';
+import { writeFileSync, mkdtempSync, mkdirSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+const SP = process.argv[2] ?? mkdtempSync(`${tmpdir()}/shredder-check-`); // screenshots go in SP/shots
+mkdirSync(`${SP}/shots`, { recursive: true });
+console.log('screenshots:', `${SP}/shots`);
+const BIN = `${process.env.HOME}/Library/Caches/ms-playwright/chromium-1248/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing`;
+const chrome = spawn(BIN, ['--headless=new', '--remote-debugging-port=9337', `--user-data-dir=${mkdtempSync(`${SP}/profile-`)}`, '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-first-run', 'about:blank'], { stdio: 'ignore' });
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+let targets;
+for (let i = 0; i < 40; i++) { try { targets = await (await fetch('http://127.0.0.1:9337/json')).json(); break; } catch { await sleep(250); } }
+const ws = new WebSocket(targets.find((t) => t.type === 'page').webSocketDebuggerUrl);
+await new Promise((r) => ws.addEventListener('open', r));
+let id = 0; const waiting = new Map(); const errs = [];
+ws.addEventListener('message', (m) => { const msg = JSON.parse(m.data); if (msg.id && waiting.has(msg.id)) { waiting.get(msg.id)(msg); waiting.delete(msg.id); } if (msg.method === 'Runtime.exceptionThrown') errs.push(JSON.stringify(msg.params.exceptionDetails.exception?.description)); });
+const send = (method, params = {}) => new Promise((r) => { const i = ++id; waiting.set(i, r); ws.send(JSON.stringify({ id: i, method, params })); });
+const ev = async (e) => (await send('Runtime.evaluate', { expression: e, awaitPromise: true, returnByValue: true })).result?.result?.value;
+const touch = (type, pts) => send('Input.dispatchTouchEvent', { type, touchPoints: pts.map(([x, y, i]) => ({ x, y, id: i, radiusX: 12, radiusY: 12 })) });
+const shot = async (name) => { const r = await send('Page.captureScreenshot', { format: 'png' }); writeFileSync(`${SP}/shots/${name}.png`, Buffer.from(r.result.data, 'base64')); };
+const until = async (cond, ms = 8000) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (await ev(cond)) return true; await sleep(15); } return false; };
+const W = 1180, row = 820 * 0.62;
+await send('Runtime.enable'); await send('Page.enable');
+await send('Emulation.setDeviceMetricsOverride', { width: 1180, height: 820, deviceScaleFactor: 1, mobile: true });
+await send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
+await send('Page.navigate', { url: 'http://127.0.0.1:5173/play.html?bike=bolinas&at=Climb' });
+await sleep(2500);
+await sleep(3000);
+const C = await ev(`(() => { const c = window.__lab.course.climb; return { ledges: c.ledges.map((l) => ({ x: l.pos.x, z: l.pos.z, dir: l.dir })), loose: c.loose, area: c.area, top: c.top.a.x }; })()`);
+console.log(JSON.stringify(C));
+const go = async (x, z, yaw) => {
+  const tp = (y) => ev(`(() => { const L = window.__lab, V = L.s.pos.constructor; L.course.stations.tmp = { pos: new V(${x}, ${'${y}'}, ${z}), yaw: ${yaw} }; L.teleport('tmp'); })()`.replace('${y}', y));
+  await tp(15); await sleep(400); await until(`window.__lab.s.grounded`, 6000);
+  const y = await ev(`window.__lab.s.pos.y + 0.02`);
+  await tp(y); await sleep(1500);
+};
+const OUT = 6.6, sw1 = C.area[0].x1 - OUT, sw2 = C.area[2].x0 + OUT;
+await sleep(2000);
+await go(C.area[0].x0 + 0.5, 70, 0); await shot('90-start');
+await go(C.ledges[0].x - 17.5, 70, 0); await shot('91-rock-garden');
+await go(C.loose[0].x0 + 1.5, 70, 0);
+await touch('touchStart', [[130, row, 2]]); await touch('touchMove', [[130, row - 25, 2]]);
+await sleep(1200); await shot('92-gravel-zone');
+await touch('touchEnd', []);
+await go(sw1 - 2, 70, 0); await shot('93-switchback-1');
+const split = C.loose.find((a) => a.z0 > 76 && a.z0 < 78);
+await go(split.x1 + 5.5, 77, Math.PI); await shot('94-split');
+await go(sw2 + 2, 77, Math.PI); await shot('95-switchback-2');
+await go(C.loose[2].x1 + 0.5, 84, 0); await shot('96-gap');
+await go(C.top + 3, 84, 0); await shot('97-summit');
+console.log('errors:', errs.length ? errs.join('\n') : 'none');
+ws.close(); chrome.kill();

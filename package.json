@@ -12,7 +12,7 @@
     "release": "npm run check && npm test && npm run build && npx --yes wrangler@3.114.17 pages deploy dist --project-name shoshone-shredder --branch main",
     "deploy:preview": "npm run check && npm run build && npx --yes wrangler@3.114.17 pages deploy dist --project-name shoshone-shredder --branch preview"
   },
-  "license": "UNLICENSED",
+  "license": "MIT",
   "dependencies": {
     "@dimforge/rapier3d-compat": "0.14.0",
     "three": "0.170.0"

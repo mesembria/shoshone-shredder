@@ -86,3 +86,7 @@ Saves live in each browser, per address. Moving to a new address starts empty: o
     npm run check   # types
     npm test        # 263 tests
     npm run build   # production build in dist/
+
+## License
+
+MIT. See [LICENSE](LICENSE).

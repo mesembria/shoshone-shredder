@@ -34,7 +34,9 @@ export function stripHtml(s: Strip): string {
   return `<div class="${stripClass(s)}" data-next="${s.next}" style="--fill:${n3(s.fill)};--open:${n3(s.open)}"><b class="have">${s.have}</b><span class="bar"><i class="fill"></i><i class="open"></i></span><span class="next">${nextStars(s)}</span><span class="target">${s.target}</span></div>`;
 }
 // The same strip, updated in place each frame: the numbers and the bar every time, the star icons only when the next
-// star changes (a star passed pops, a fuse run out drops the star)
+// star changes. A star passed pops the stars. A fuse run out drops that one gold star: it stays a moment where it was,
+// falling and fading (on the last star, over the empty one left behind), while the stars still held stay put.
+const LOST = '<i class="ui-star won lost">★</i>', LOST_MS = 350;
 export function paintStrip(el: HTMLElement, s: Strip): void {
   const before = Number(el.dataset.next), wasFull = el.classList.contains('full');
   el.className = stripClass(s);
@@ -42,15 +44,22 @@ export function paintStrip(el: HTMLElement, s: Strip): void {
   el.style.setProperty('--open', n3(s.open));
   el.querySelector('.have')!.textContent = s.have;
   el.querySelector('.target')!.textContent = s.target;
-  const wasGold = !!el.querySelector('.next .ui-star.won'), gold = (s.kind === 'time' && s.fill > 0) || s.full;
+  const wasGold = !!el.querySelector('.next .ui-star.won:not(.lost)'), gold = (s.kind === 'time' && s.fill > 0) || s.full;
   if (before === s.next && wasFull === s.full && wasGold === gold) return;
   el.dataset.next = String(s.next);
   const stars = el.querySelector<HTMLElement>('.next')!;
+  stars.classList.remove('pop');
+  if (s.kind === 'time') {
+    // every star whose fuse ran out since the last paint (one, unless a frame skipped a whole tier), and the last star
+    // going out with nothing after it
+    const last = s.next === before && wasGold && !gold, lost = s.next < before ? before - s.next : last ? 1 : 0;
+    stars.innerHTML = nextStars(s) + (last ? LOST.replace('lost', 'lost over') : LOST.repeat(lost));
+    stars.querySelectorAll('.lost').forEach((g) => setTimeout(() => g.remove(), LOST_MS));
+    return;
+  }
   stars.innerHTML = nextStars(s);
-  const anim = s.kind === 'time' ? 'drop' : 'pop';
-  stars.classList.remove('pop', 'drop');
   void stars.offsetWidth;
-  if (s.kind === 'time' ? s.next < before : s.next > before || s.full) stars.classList.add(anim);
+  if (s.next > before || s.full) stars.classList.add('pop');
 }
 
 // ---- the three star medals: the stars for that tier, what it needs, and what it pays or "✓ won"

@@ -1,7 +1,7 @@
 // Drives the ride on /play.html end to end in headless Chromium, for a rider whose save owns the hardtail, the dirt
 // jumper and the enduro: the welcome card, the menu (🗺 Map, 📍 Mesa Jump Park; no Tune), Cone Zone (a time, stars and
 // cogs), the area list, a locked ring's card, a backflip tried on the enduro, swapping (owned bikes only) to the dirt
-// jumper mid-challenge and landing one, the downhill boost, finishing Hairpin Hollow ↑ beside the ↓ ring, the swap
+// jumper mid-challenge and landing one, a time star dropping off the strip, the downhill boost, finishing Hairpin Hollow ↑ beside the ↓ ring, the swap
 // being saved, and the ?bike= quick start. Prints PASS/FAIL lines; exits non-zero on any FAIL.
 import { spawn } from 'node:child_process';
 import { writeFileSync, mkdtempSync, mkdirSync } from 'node:fs';
@@ -213,6 +213,32 @@ check(await until(`location.search.includes('go=goatDown')`, 5000), `Goat Ladder
 check(await until(`!!window.__game && window.__lab?.course.place === 'shredderHills'`, 15000), 'and the ride is on Shredder Hills');
 check(await until(`window.__game.modal() === 'countdown' || !!window.__game.run()`, 8000), 'straight into the Goat Ladder ↓ countdown');
 check(await until(`window.__game.run()?.def.id === 'goatDown'`, 8000), 'Goat Ladder ↓ runs');
+
+// ---- a time star lost: when ★★★'s fuse runs out, that one gold star falls away and fades where it stood, and the two
+// still held stay put (the strip once slid the remaining stars down from above instead). The clock is pushed to just
+// before ★★★'s time; the game's own tick runs it out.
+const TIMES = await ev(`import('/src/game/challenges.ts').then((m) => m.CHALLENGES.find((c) => c.id === 'goatDown').goal.times)`);
+const stripStars = `(() => { const n = document.querySelector('#lab .runhud .ui-strip .next'); if (!n) return null; const real = [...n.querySelectorAll('.ui-star:not(.lost)')], lost = [...n.querySelectorAll('.lost')];
+  return { next: n.parentElement.dataset.next, real: real.length, gold: real.filter((x) => x.classList.contains('won')).length, lost: lost.length, over: lost.filter((x) => x.classList.contains('over')).length,
+    lostAnim: lost.map((x) => getComputedStyle(x).animationName), heldAnim: [n, ...real].map((x) => getComputedStyle(x).animationName).filter((a) => a !== 'none') }; })()`;
+await ev(`(() => { window.__game.run().t = ${TIMES[2] - 0.15}; })()`);
+check(await until(`document.querySelector('#lab .runhud .ui-strip')?.dataset.next === '2'`, 3000), `the ★★★ fuse runs out (${JSON.stringify(await ev(stripStars))})`);
+const dropping = await ev(stripStars);
+await shot('48-star-drop');
+check(!!dropping && dropping.real === 2 && dropping.gold === 2 && dropping.lost === 1 && dropping.over === 0 && dropping.lostAnim[0] === 'ui-drop' && dropping.heldAnim.length === 0,
+  `one gold star falls away in its own place; the two held stay put (${JSON.stringify(dropping)})`);
+await sleep(500);
+const dropped = await ev(stripStars);
+check(!!dropped && dropped.real === 2 && dropped.lost === 0, `then it's gone, and the strip goes on with ★★ (${JSON.stringify(dropped)})`);
+// the last star going out leaves its empty one, and drops the gold one from on top of it (drawn off the ride: past the
+// limit the run ends)
+const last = await ev(`import('/src/game/pieces.ts').then((p) => { const d = document.createElement('div'); document.body.append(d);
+  const s = { kind: 'time', next: 1, full: false, have: '39.9 s', fill: 0.01, open: 0, target: 'under 40', red: true, left: null };
+  d.innerHTML = p.stripHtml(s); const el = d.firstElementChild; p.paintStrip(el, { ...s, fill: 0, have: '40.0 s' });
+  const n = el.querySelector('.next'), g = n.querySelector('.lost.over'), e = n.querySelector('.ui-star:not(.lost)'), gr = g?.getBoundingClientRect(), er = e?.getBoundingClientRect();
+  const r = { empty: !!e && !e.classList.contains('won'), over: !!g, same: !!gr && !!er && Math.abs(gr.left - er.left) < 1 && Math.abs(gr.top - er.top) < 1, real: n.querySelectorAll('.ui-star:not(.lost)').length };
+  d.remove(); return r; })`);
+check(!!last && last.empty && last.over && last.same && last.real === 1, `the last star: it drops from on top of the empty star it leaves (${JSON.stringify(last)})`);
 await click('#lab .b-stop'); await sleep(300);
 
 // ---- a crash on a Downhill run: do nothing and you get up where you fell, the clock still going; tap Again and it

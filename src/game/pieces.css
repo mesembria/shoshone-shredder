@@ -39,12 +39,15 @@
 .ui-strip.time .fill { background: #ffd23f; }
 .ui-strip.time.red .fill { background: #e8483b; }
 .ui-strip.full .fill { background: #ffd23f; }
-.ui-strip .next { display: inline-flex; gap: 2px; font-size: 30px; }
+.ui-strip .next { position: relative; display: inline-flex; gap: 2px; font-size: 30px; }
 .ui-strip .next.pop { animation: ui-pop .35s ease-out; }
-.ui-strip .next.drop { animation: ui-drop .35s ease-out; }
+/* a star whose fuse ran out: it falls out of the strip and fades where it stood (paintStrip removes it after .35 s);
+   .over sits on the empty last star instead of taking a place of its own */
+.ui-strip .next .lost { animation: ui-drop .35s ease-in forwards; }
+.ui-strip .next .lost.over { position: absolute; left: 0; top: 0; }
 .ui-strip .target { font: 900 22px/1 ui-rounded, system-ui, sans-serif; }
 @keyframes ui-pop { 0% { transform: scale(1.7); } 60% { transform: scale(.92); } 100% { transform: scale(1); } }
-@keyframes ui-drop { 0% { transform: translateY(-14px); opacity: .3; } 100% { transform: none; opacity: 1; } }
+@keyframes ui-drop { 0% { transform: none; opacity: 1; } 100% { transform: translateY(26px) rotate(35deg); opacity: 0; } }
 
 /* the three star medals */
 .ui-medals { display: flex; gap: 12px; justify-content: center; }

@@ -4,6 +4,8 @@ import { createRider, kneeAt, THIGH, SHIN, RIG_WHEEL, DEFAULT_FRAME, frameOf, ri
 import { createBikeState } from '../src/bike/controller';
 import { BIKES } from '../src/rules/bikes';
 import { LAB_BIKES, LAB_ORDER } from '../src/lab/bikes';
+import { kitOf, withKit } from '../src/rules/bikes';
+import { SLOTS, loadout, partsFor } from '../src/game/catalog';
 
 describe('rider rig', () => {
   it('keeps thigh and shin lengths for any reachable pedal', () => {
@@ -150,5 +152,91 @@ describe('rider rig', () => {
         for (let i = 0; i < ps.length; i++) for (let j = i + 1; j < ps.length; j++) expect(ps[i][1].distanceTo(ps[j][1]), `${b.id} ${ps[i][0]}/${ps[j][0]}`).toBeGreaterThan(0.02);
       }
     }
+  });
+});
+
+describe('the kit: fork, rear end, shock and brakes', () => {
+  const has = (rig: ReturnType<typeof createRider>, n: string) => !!rig.root.getObjectByName(n);
+  const worldY = (o: THREE.Object3D) => (o.updateWorldMatrix(true, false), o.getWorldPosition(new THREE.Vector3()).y);
+  const meshes = (o: THREE.Object3D) => { let n = 0; o.traverse((m) => { if (m instanceof THREE.Mesh) n++; }); return n; };
+
+  it('each kit builds its pieces', () => {
+    const ht = createRider(LAB_BIKES.hardtail), bo = createRider(LAB_BIKES.bolinas), en = createRider(LAB_BIKES.enduro), dj = createRider(LAB_BIKES.dirtjumper);
+    expect(has(ht, 'rimBrakeFront') && has(ht, 'rimBrakeRear')).toBe(true);
+    expect(has(ht, 'forkLowers')).toBe(false);
+    expect(has(bo, 'forkLowers') && has(bo, 'oring') && has(bo, 'rotorFront') && has(bo, 'caliperFront')).toBe(true);
+    expect(has(bo, 'swingarm')).toBe(false);
+    expect(has(en, 'swingarm') && has(en, 'shockBody') && has(en, 'shockShaft') && has(en, 'rocker')).toBe(true);
+    expect(has(en, 'shockSpring')).toBe(false);
+    expect(has(createRider(loadout('enduro', { suspension: 'enduro-coil-shock' }).spec), 'shockSpring')).toBe(true);
+    expect(has(dj, 'caliperRear')).toBe(true);
+    expect(has(dj, 'caliperFront') || has(dj, 'rimBrakeFront')).toBe(false);
+    for (const [design, piece] of [['singlePivot', 'swingarm'], ['shortLink', 'links']] as const) {
+      const spec = { ...LAB_BIKES.enduro, kit: withKit(kitOf(LAB_BIKES.enduro), { rear: { design } }) };
+      expect(has(createRider(spec), piece), design).toBe(true);
+    }
+  });
+
+  it('the mesh budget holds for every bike and part mix', () => {
+    for (const id of LAB_ORDER) {
+      let fits: Record<string, string>[] = [{}];
+      for (const slot of SLOTS) fits = fits.flatMap((f) => [f, ...partsFor(id, slot).filter((p) => !p.stock).map((p) => ({ ...f, [slot]: p.id }))]);
+      for (const f of fits) expect(meshes(createRider(loadout(id, f).spec, { rider: false }).root), `${id} ${JSON.stringify(f)}`).toBeLessThanOrEqual(23);
+    }
+  });
+
+  // a landing big enough to bottom out, with no whole-body squash, stepped to its deepest point
+  function slam(id: keyof typeof LAB_BIKES) {
+    const rig = createRider(LAB_BIKES[id]);
+    const s = createBikeState(LAB_BIKES[id], new THREE.Vector3(0, 0, 0), 0);
+    rig.update(s, 1 / 60, false);
+    const a = rig.anchors(), front = rig.root.getObjectByName('wheelFront')!, rear = rig.root.getObjectByName('wheelRear')!;
+    const rest = { bars: worldY(a.bars), front: worldY(front), rear: worldY(rear) };
+    rig.land(0, 2);
+    let barsLow = rest.bars, wheelMove = 0;
+    for (let i = 0; i < 20; i++) {
+      rig.update(s, 1 / 120, false);
+      barsLow = Math.min(barsLow, worldY(a.bars));
+      wheelMove = Math.max(wheelMove, Math.abs(worldY(front) - rest.front), Math.abs(worldY(rear) - rest.rear));
+    }
+    return { rig, s, rest, barsDrop: rest.bars - barsLow, wheelMove };
+  }
+
+  it('full compression sinks the frame, not the wheels', () => {
+    const { barsDrop, wheelMove } = slam('enduro');
+    expect(wheelMove).toBeLessThan(0.02);
+    expect(barsDrop).toBeGreaterThan(0.05);
+  });
+
+  it("a rigid hardtail's frame doesn't sink", () => {
+    expect(slam('hardtail').barsDrop).toBeLessThan(0.005);
+  });
+
+  it('the O-ring sits at the top of its travel on the stand, and stays down after a hit', () => {
+    const rig = createRider(LAB_BIKES.bolinas);
+    rig.standPose();
+    const ring = rig.root.getObjectByName('oring')!, seal = ring.userData.seal as THREE.Vector3;
+    expect(ring.position.x).toBeCloseTo(seal.x, 5);
+    expect(ring.position.y).toBeCloseTo(seal.y, 5);
+    const s = createBikeState(LAB_BIKES.bolinas, new THREE.Vector3(0, 0, 0), 0);
+    rig.land(0, 0.8);
+    for (let i = 0; i < 120; i++) rig.update(s, 1 / 60, false);
+    expect(ring.position.y).toBeGreaterThan(seal.y + 0.03);
+  });
+
+  it('a crash carries the pieces, and getting back on starts the springs fresh', () => {
+    const { rig, s, rest } = slam('enduro');
+    const scene = new THREE.Scene();
+    scene.add(rig.root);
+    const body = { translation: () => ({ x: 0, y: 0, z: 0 }), rotation: () => ({ x: 0, y: 0, z: 0, w: 1 }) };
+    const t = { bike: body, rider: body } as unknown as Parameters<typeof rig.detach>[0];
+    rig.detach(t, scene);
+    rig.followTumble(t);
+    let p: THREE.Object3D | null = rig.root.getObjectByName('forkLowers') ?? scene.getObjectByName('forkLowers')!;
+    while (p && p.parent && p.parent !== scene) p = p.parent;
+    expect(p!.getObjectByName('rearHub') ?? p!.getObjectByName('forkLowers')).toBeTruthy();
+    rig.reattach();
+    rig.update(s, 1 / 60, false);
+    expect(Math.abs(worldY(rig.anchors().bars) - rest.bars)).toBeLessThan(0.005);
   });
 });

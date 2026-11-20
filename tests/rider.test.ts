@@ -160,6 +160,33 @@ describe('the kit: fork, rear end, shock and brakes', () => {
   const worldY = (o: THREE.Object3D) => (o.updateWorldMatrix(true, false), o.getWorldPosition(new THREE.Vector3()).y);
   const meshes = (o: THREE.Object3D) => { let n = 0; o.traverse((m) => { if (m instanceof THREE.Mesh) n++; }); return n; };
 
+  // every vertex of a named mesh, in world coordinates (the rig stands at the origin facing +x, z to its right)
+  const pts = (root: THREE.Object3D, name: string): THREE.Vector3[] => {
+    root.updateMatrixWorld(true);
+    const m = root.getObjectByName(name) as THREE.Mesh, a = m.geometry.getAttribute('position'), out: THREE.Vector3[] = [];
+    for (let i = 0; i < a.count; i++) out.push(new THREE.Vector3().fromBufferAttribute(a, i).applyMatrix4(m.matrixWorld));
+    return out;
+  };
+  const hub = (root: THREE.Object3D, name: string) => root.getObjectByName(name)!.getWorldPosition(new THREE.Vector3());
+
+  it('rim brakes reach the rim and stop just past the tire', () => {
+    const spec = LAB_BIKES.hardtail, rig = createRider(spec), WR = frameOf(spec).wheel * riderScaleOf(spec), sc = riderScaleOf(spec);
+    for (const [arms, wheel] of [['rimBrakeFront', 'wheelFront'], ['rimBrakeRear', 'wheelRear']] as const) {
+      const c = hub(rig.root, wheel), d = pts(rig.root, arms).map((p) => Math.hypot(p.x - c.x, p.y - c.y));
+      expect(Math.min(...d), `${arms} pads at the rim`).toBeLessThan(WR - 0.06 * sc);
+      expect(Math.max(...d), `${arms} not floating above the tire`).toBeLessThan(WR + 0.15 * sc);
+      // on the fork legs or stays (centred at ±0.07, the rigid fork's legs 0.035 thick), not hanging off their sides
+      expect(Math.max(...pts(rig.root, arms).map((p) => Math.abs(p.z))), `${arms} on the legs`).toBeLessThan(0.105 * sc);
+    }
+  });
+
+  it('rotors and calipers sit between the hub and the fork or stays', () => {
+    const spec = LAB_BIKES.enduro, rig = createRider(spec), sc = riderScaleOf(spec);
+    for (const n of ['rotorFront', 'rotorRear']) expect(Math.max(...pts(rig.root, n).map((p) => Math.abs(p.z))), n).toBeLessThan(0.07 * sc);
+    // a caliper straddles its rotor: no further out than the outside of the leg
+    for (const n of ['caliperFront', 'caliperRear']) expect(Math.max(...pts(rig.root, n).map((p) => Math.abs(p.z))), n).toBeLessThan(0.105 * sc);
+  });
+
   it('each kit builds its pieces', () => {
     const ht = createRider(LAB_BIKES.hardtail), bo = createRider(LAB_BIKES.bolinas), en = createRider(LAB_BIKES.enduro), dj = createRider(LAB_BIKES.dirtjumper);
     expect(has(ht, 'rimBrakeFront') && has(ht, 'rimBrakeRear')).toBe(true);

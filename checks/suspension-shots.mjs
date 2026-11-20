@@ -59,9 +59,17 @@ async function slam() {
   return landed;
 }
 const sideOf = (side) => (side < 0 ? 'left' : 'right');
+// every bike at rest first: a landing's dust lingers for ages in slow motion
 for (const [name, fit, bike] of builds) {
   await show(`loadout('${bike ?? name}', ${JSON.stringify(fit)}).spec`);
   for (const side of [-1, 1]) { await ev(`window.__side = ${side}`); await sleep(250); await shot(`${name}-${sideOf(side)}`); }
+}
+for (const d of designs) {
+  await show(`(() => { const sp = loadout('enduro', {}).spec; return { ...sp, kit: withKit(kitOf(sp), { rear: { design: '${d}' } }) }; })()`);
+  await ev(`window.__side = 1`); await sleep(250); await shot(`rear-${d}`);
+}
+for (const [name, fit, bike] of builds) {
+  await show(`loadout('${bike ?? name}', ${JSON.stringify(fit)}).spec`);
   await ev(`window.__side = 1`);
   check(await slam(), `${name} landed`);
   await shot(`${name}-landing`);
@@ -76,10 +84,6 @@ await ev(`(() => { const t = window.__lab.look.scene.getObjectByName('wheelFront
 const hidden = await calls();
 await ev('window.__hid.visible = true');
 check(shown - hidden <= 2 * 23, `the Enduro (coil) adds ${shown - hidden} draw calls, at most 46 (23 meshes and their shadows)`);
-for (const d of designs) {
-  await show(`(() => { const sp = loadout('enduro', {}).spec; return { ...sp, kit: withKit(kitOf(sp), { rear: { design: '${d}' } }) }; })()`);
-  await ev(`window.__side = 1`); await sleep(250); await shot(`rear-${d}`);
-}
 check(errs.length === 0, `no page errors ${errs.join(' | ')}`);
 console.log(fails ? `${fails} FAILED` : 'ALL PASS');
 ws.close(); chrome.kill(); process.exit(fails ? 1 : 0);

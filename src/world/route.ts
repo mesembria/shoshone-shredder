@@ -35,27 +35,45 @@ export function routePoint(r: Route, d: number): { pos: THREE.Vector3; yaw: numb
   throw new Error('a route needs a leg');
 }
 
-// Where along the route (x, z) is, or null when it's off it. Where legs overlap (one trail ridden up then back down), the
-// one closest to `near` (the progress so far) wins, and a leg ridden the other way from `yaw` counts ROUTE.heading
-// metres further. Each leg's trail is asked once per point (the probe is cached), and nothing is allocated.
-export function locate(r: Route, x: number, z: number, yaw: number, near: number): number | null {
-  let best: number | null = null, bestScore = Infinity, start = 0;
-  for (const l of r.legs) {
-    const p = l.trail.path.probe(x, z), lo = Math.min(l.u0, l.u1), hi = Math.max(l.u0, l.u1);
-    // a hair past a leg's end (rounding at its first and last point) still counts, at the end; but past the end of the
-    // trail itself the nearest point is its last one, and that's not beside it (Goat Ladder's climb ends where the
-    // descent starts)
-    const ends = p.u <= 1e-6 || p.u >= l.trail.path.length - 1e-6;
-    if (p.u >= lo - 0.05 && p.u <= hi + 0.05 && p.dist <= l.trail.width / 2 + ROUTE.lateral && !(ends && p.dist > Math.abs(p.off) + 0.05)) {
-      const u = Math.max(lo, Math.min(hi, p.u)), d = start + Math.abs(u - l.u0), back = l.u1 < l.u0;
-      const along = l.trail.path.yawAt(u) + (back ? Math.PI : 0);
-      const score = Math.abs(d - near) + (Math.cos(yaw - along) < 0 ? ROUTE.heading : 0);
-      if (score < bestScore) {
-        bestScore = score;
-        best = d;
-      }
-    }
-    start += legLength(l);
+// Where along the route (x, z) is, or null when it's off it. Each leg offers up to two readings: the nearest point on its
+// whole trail, and, on the stretch of it within ROUTE.skip + 5 m of `near` (the progress so far), the point within reach
+// closest to `near`. The second
+// matters where the trail doubles back: on the inside of a switchback the next leg can be as close as this one. Of the
+// readings within reach, the one closest to `near` wins, and one ridden the other way from `yaw` counts ROUTE.heading
+// metres further (the ↕ runs, where a trail is ridden up then back down). Nothing is allocated.
+const WINDOW = 5;
+let best = 0, bestScore = Infinity;
+function consider(l: RouteLeg, start: number, u: number, off: number, dist: number, yaw: number, near: number): void {
+  const lo = Math.min(l.u0, l.u1), hi = Math.max(l.u0, l.u1);
+  // a hair past a leg's end (rounding at its first and last point) still counts, at the end; but past the end of the
+  // trail itself the nearest point is its last one, and that's not beside it (Goat Ladder's climb ends where the descent
+  // starts)
+  const ends = u <= 1e-6 || u >= l.trail.path.length - 1e-6;
+  if (u < lo - 0.05 || u > hi + 0.05 || dist > l.trail.width / 2 + ROUTE.lateral || (ends && dist > Math.abs(off) + 0.05)) return;
+  const uc = Math.max(lo, Math.min(hi, u)), d = start + Math.abs(uc - l.u0), back = l.u1 < l.u0;
+  const along = l.trail.path.yawAt(uc) + (back ? Math.PI : 0);
+  const score = Math.abs(d - near) + (Math.cos(yaw - along) < 0 ? ROUTE.heading : 0);
+  if (score < bestScore) {
+    bestScore = score;
+    best = d;
   }
-  return best;
+}
+export function locate(r: Route, x: number, z: number, yaw: number, near: number): number | null {
+  best = 0;
+  bestScore = Infinity;
+  let start = 0;
+  for (const l of r.legs) {
+    const len = legLength(l), back = l.u1 < l.u0, dir = back ? -1 : 1;
+    const g = l.trail.path.probe(x, z);
+    consider(l, start, g.u, g.off, g.dist, yaw, near);
+    // the stretch of this leg around `near` (clamped to the leg)
+    const a = Math.max(0, Math.min(len, near - start - ROUTE.skip - WINDOW)), b = Math.max(0, Math.min(len, near - start + ROUTE.skip + WINDOW));
+    if (b > a) {
+      const uNear = l.u0 + dir * Math.max(0, Math.min(len, near - start));
+      const p = l.trail.path.probeNear(x, z, l.u0 + dir * a, l.u0 + dir * b, l.trail.width / 2 + ROUTE.lateral, uNear);
+      if (p.dist < Infinity) consider(l, start, p.u, p.off, p.dist, yaw, near);
+    }
+    start += len;
+  }
+  return bestScore < Infinity ? best : null;
 }

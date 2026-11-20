@@ -239,4 +239,72 @@ describe('the kit: fork, rear end, shock and brakes', () => {
     rig.update(s, 1 / 60, false);
     expect(Math.abs(worldY(rig.anchors().bars) - rest.bars)).toBeLessThan(0.005);
   });
+
+  const ride = (id: keyof typeof LAB_BIKES, frames: number, cues?: { braking: number; rough: boolean }, setup?: (s: ReturnType<typeof createBikeState>) => void) => {
+    const rig = createRider(LAB_BIKES[id]);
+    const s = createBikeState(LAB_BIKES[id], new THREE.Vector3(0, 0, 0), 0);
+    rig.update(s, 1 / 60, false);
+    const a = rig.anchors(), cal = rig.root.getObjectByName('caliperFront')!;
+    const rest = { bars: worldY(a.bars), cal: cal.position.clone() };
+    setup?.(s);
+    for (let i = 0; i < frames; i++) rig.update(s, 1 / 60, false, cues);
+    return { rig, s, rest, barsNow: worldY(a.bars), calMoved: cal.position.distanceTo(rest.cal) };
+  };
+
+  it('braking dives the fork and clamps the brakes', () => {
+    const braked = ride('bolinas', 30, { braking: 1, rough: false });
+    expect(braked.barsNow).toBeLessThan(braked.rest.bars - 0.01);
+    expect(braked.calMoved).toBeGreaterThan(0.01);
+    const coasting = ride('bolinas', 30);
+    expect(Math.abs(coasting.barsNow - coasting.rest.bars)).toBeLessThan(0.002);
+    expect(coasting.calMoved).toBeLessThan(0.001);
+  });
+
+  it('a manual stretches the fork', () => {
+    const r = ride('bolinas', 40, undefined, (s) => { s.manual = 1; });
+    const fork = r.rig.anchors().fork, lowers = r.rig.root.getObjectByName('forkLowers')!;
+    // the lowers slide down the stanchions: the front end sits lower relative to the frame than at rest
+    expect(lowers.parent!.position.y).toBeLessThan(-0.01);
+    expect(fork).toBeTruthy();
+  });
+
+  it('rough ground chatters the suspension', () => {
+    const r = ride('enduro', 60, { braking: 0, rough: true }, (s) => { s.speed = 6; });
+    let moved = 0;
+    const a = r.rig.anchors();
+    for (let i = 0; i < 30; i++) {
+      r.rig.update(r.s, 1 / 60, false, { braking: 0, rough: true });
+      moved = Math.max(moved, Math.abs(worldY(a.bars) - r.rest.bars));
+    }
+    expect(moved).toBeGreaterThan(0.003);
+  });
+
+  it('pumping squishes it', () => {
+    const r = ride('enduro', 1);
+    r.rig.pump();
+    let low = r.rest.bars;
+    for (let i = 0; i < 20; i++) { r.rig.update(r.s, 1 / 60, false); low = Math.min(low, worldY(r.rig.anchors().bars)); }
+    expect(r.rest.bars - low).toBeGreaterThan(0.02);
+  });
+
+  it('the O-ring keeps the deepest hit until resetHits', () => {
+    const r = ride('bolinas', 1);
+    const ring = r.rig.root.getObjectByName('oring')!, seal = ring.userData.seal as THREE.Vector3;
+    r.rig.land(0, 0.9);
+    for (let i = 0; i < 120; i++) r.rig.update(r.s, 1 / 60, false);
+    expect(ring.position.y).toBeGreaterThan(seal.y + 0.03);
+    r.rig.resetHits();
+    r.rig.update(r.s, 1 / 60, false);
+    expect(ring.position.y).toBeCloseTo(seal.y, 4);
+  });
+
+  it('a fresh rig after a swap starts with the O-ring at the top', () => {
+    const r = ride('bolinas', 1);
+    r.rig.land(0, 1);
+    for (let i = 0; i < 30; i++) r.rig.update(r.s, 1 / 60, false);
+    const next = createRider(LAB_BIKES.bolinas);
+    next.update(r.s, 1 / 60, false);
+    const ring = next.root.getObjectByName('oring')!, seal = ring.userData.seal as THREE.Vector3;
+    expect(ring.position.y).toBeCloseTo(seal.y, 5);
+  });
 });

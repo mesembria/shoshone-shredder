@@ -20,6 +20,7 @@ export interface Sound {
   update(s: BikeState): void;
   pop(): void;
   land(strength: number, surface: Surface): void;
+  bottom(): void; // the suspension hits its bump stop: a hard clunk
   trick(count: number): void;
   bank(): void;
   crash(big: boolean): void;
@@ -110,6 +111,11 @@ export function createSound(): Sound {
       const now = ctx.currentTime;
       tone(110, now, 0.18 + 0.1 * strength, 0.35 * Math.min(1.5, strength + 0.3), 'sine', 55);
       hiss(now, 0.15 + 0.1 * strength, 0.25 * strength, TIRE[surface].freq, 0.8);
+    },
+    bottom() {
+      const now = ctx.currentTime;
+      tone(70, now, 0.14, 0.45, 'square', 38);
+      tone(180, now, 0.05, 0.2, 'triangle', 90);
     },
     trick(count) {
       // count 0 (a trick that scored nothing) would read SCALE[-1]: a NaN note throws and stops the frame loop

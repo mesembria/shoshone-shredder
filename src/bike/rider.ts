@@ -28,8 +28,12 @@ const CRANK = 0.17;
 
 export interface RiderRig {
   root: THREE.Group;
-  update(s: BikeState, dt: number, crouching: boolean): void;
+  // cues: what the ride is doing that BikeState doesn't say. braking 0..1, rough: riding rough ground. None: brakes open.
+  update(s: BikeState, dt: number, crouching: boolean, cues?: { braking: number; rough: boolean }): void;
   land(strength: number, used?: number): void; // used: share of the travel the ride says this landing needed (1 bottoms out)
+  pump(): void; // a pump stroke squishes the suspension
+  bump(): void; // a knock: a rock, a curb
+  resetHits(): void; // the O-ring back to the top, for a new run
   detach(t: Tumble, scene: THREE.Scene): void;
   followTumble(t: Tumble): void;
   reattach(): void;
@@ -238,7 +242,7 @@ export function createRider(bike: BikeSpec, opts: { rider?: boolean } = {}): Rid
 
   return {
     root,
-    update(s, dt, crouching) {
+    update(s, dt, crouching, cues) {
       if (lift0) body.position.y = lift0 = 0; // the game takes over from a stand pose
       const yawRate = lastYaw === null || dt <= 0 ? 0 : wrap(s.yaw - lastYaw) / dt;
       lastYaw = s.yaw;
@@ -269,8 +273,17 @@ export function createRider(bike: BikeSpec, opts: { rider?: boolean } = {}): Rid
       // winded after a crash, or nearly out of energy: the rider pants
       const panting = s.winded > 0 || (lab.energy ?? 1) < 0.2;
       crouchLift = -0.12 * pose.crouch + (panting ? 0.025 * Math.sin(clock * 14) : 0);
-      stepSpring(springs.fork, dt, 0, forkKind, T);
-      stepSpring(springs.rear, dt, 0, rearKind, T);
+      // braking dives the fork and lifts the rear a little; a manual stretches the fork and squats the rear
+      const braking = cues?.braking ?? 0, manual = s.manual > 0 ? 1 : 0;
+      kitPose.clampFront = ease(kitPose.clampFront, braking, 20);
+      kitPose.clampRear = kitPose.clampFront;
+      if (cues?.rough && s.grounded && s.speed > 0.5) {
+        const k = 1.6 * T.suspChatter * Math.min(1, s.speed / 6) * dt * 60;
+        springs.fork.v += (Math.random() - 0.5) * k;
+        springs.rear.v += (Math.random() - 0.5) * k;
+      }
+      stepSpring(springs.fork, dt, 0.25 * braking * T.suspDive - 0.3 * manual * T.suspManual, forkKind, T);
+      stepSpring(springs.rear, dt, -0.1 * braking * T.suspDive + 0.1 * manual * T.suspManual, rearKind, T);
       applyKit();
       pose.foot = ease(pose.foot, s.grounded && ((lab.dab ?? 0) > 0 || lab.resting) ? 1 : 0, 12);
       for (const a of arms) a.g.rotation.set(a.s * 0.5 * pose.arms, 0, 2.1 * pose.arms);
@@ -287,6 +300,17 @@ export function createRider(bike: BikeSpec, opts: { rider?: boolean } = {}): Rid
         if (hasFork) springs.fork.v += landKick(used * T.suspLand, forkKind, T);
         if (hasRear) springs.rear.v += landKick(used * T.suspLand, rearKind, T);
       }
+    },
+    pump() {
+      springs.fork.v += landKick(0.35 * T.suspPump, forkKind, T);
+      springs.rear.v += landKick(0.35 * T.suspPump, rearKind, T);
+    },
+    bump() {
+      springs.fork.v += landKick(0.3, forkKind, T);
+      springs.rear.v += landKick(0.2, rearKind, T);
+    },
+    resetHits() {
+      springs.fork.deepest = springs.rear.deepest = 0;
     },
     detach(t, scene) {
       for (const [obj, b, ref] of [[bikePart, t.bike, tumbleRef.bike], [riderPart, t.rider, tumbleRef.rider]] as const) {

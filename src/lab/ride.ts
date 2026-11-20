@@ -147,6 +147,7 @@ export async function createRide(canvas: HTMLCanvasElement, o: RideOptions): Pro
     const st = course.stations[name];
     if (!st) return;
     clearTumble();
+    rig.resetHits();
     placeBike(s, st.pos, st.yaw);
     if (st.speed) s.speed = st.speed;
     prev.set(s.pos.x, s.pos.z); // a jump across the map isn't riding through gates
@@ -175,8 +176,11 @@ export async function createRide(canvas: HTMLCanvasElement, o: RideOptions): Pro
   }
 
   const vel = new THREE.Vector3();
+  let cues = { braking: 0, rough: false }; // for the rig: braking and rough ground move the suspension
   function step(): RideEvents {
     const intent = readIntent();
+    cues = { braking: Math.max(0, -intent.throttle), rough: !!intent.rough };
+    if (intent.again) rig.resetHits();
     if (s.pos.y < -20) intent.again = true;
     const ev: RideEvents = stepLab(s, intent, STEP, phys, course.lines);
     if (s.crash && !tumble) {
@@ -203,7 +207,10 @@ export async function createRide(canvas: HTMLCanvasElement, o: RideOptions): Pro
   let climbing: { t: number } | null = null; // riding the climb, from its start line, for the result at the top
   let pumpGlow = 0; // seconds the Jump button stays green after a pump stroke
   function react(ev: RideEvents): void {
-    if (ev.pumping) pumpGlow = 0.25;
+    if (ev.pumping) {
+      pumpGlow = 0.25;
+      rig.pump();
+    }
     // a trick off any line scores nothing: not named in the combo, and now and then a word on where points come from
     if ((ev.move || ev.trick) && ev.off && s.clock - offTold > 10) {
       offTold = s.clock;
@@ -285,6 +292,7 @@ export async function createRide(canvas: HTMLCanvasElement, o: RideOptions): Pro
     }
     if (ev.bump) {
       sound.bump();
+      rig.bump();
       hud.callout(calloutFor('bump'));
     }
     if (ev.scrape && !scrapeCooldown) {
@@ -357,7 +365,7 @@ export async function createRide(canvas: HTMLCanvasElement, o: RideOptions): Pro
     if (tumble) rig.followTumble(tumble);
     else {
       rig.root.rotation.set(0, rig.root.rotation.y, 0); // clear last frame's spin or flip
-      rig.update(s, dt, pad.crouching(now));
+      rig.update(s, dt, pad.crouching(now), cues);
       showMove(rig.root, s);
     }
     cam.update(s, paused ? 0 : dt);

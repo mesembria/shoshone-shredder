@@ -657,4 +657,41 @@ describe('points come from lines over features', () => {
     stepLab(s, intent({ swipe: 'down' }), DT, phys, [LIP]);
     expect(s.combo.count).toBe(1);
   });
+
+  // dropped square onto the flat at vy, rolling at 3 m/s: the touchdown's events and the speed either side of it
+  function drop(id: LabBikeId, vy: number) {
+    const s = bikeAt(id, 'flat', 10, 3);
+    Object.assign(s, { grounded: false, vy, pitch: 0 });
+    s.pos.y += 0.03;
+    let before = s.speed, ev: LabEvents | undefined;
+    for (let n = 0; n < 30 && !ev; n++) {
+      before = s.speed;
+      const e = stepLab(s, intent(), DT, phys, []);
+      if (e.landed) ev = e;
+    }
+    return { ev: ev!, kept: s.speed / before, s };
+  }
+
+  it('a landing too hard for a rigid bike bottoms out and costs its flatKeep', () => {
+    const soft = drop('hardtail', -4), hard = drop('hardtail', -8);
+    expect(soft.ev.bottomed).toBe(false);
+    expect(soft.ev.used!).toBeLessThan(1);
+    expect(hard.ev.bottomed).toBe(true);
+    expect(hard.ev.used!).toBeCloseTo(hard.ev.impact! / 6, 5);
+    expect(hard.ev.landed).toBe('clean');
+    expect(hard.kept).toBeLessThan(soft.kept - 0.05);
+  });
+
+  it('the enduro soaks the same landing up', () => {
+    const en = drop('enduro', -8);
+    expect(en.ev.bottomed).toBe(false);
+    expect(en.ev.used!).toBeLessThan(1);
+  });
+
+  it('a landing well past bottoming slams into a bobble', () => {
+    const vy = -6 * (1 + DEFAULTS.bottomMargin) - 1;
+    const r = drop('hardtail', vy);
+    expect(r.ev.impact!).toBeGreaterThan(6 * (1 + DEFAULTS.bottomMargin));
+    expect(r.ev.landed).toBe('bobble');
+  });
 });

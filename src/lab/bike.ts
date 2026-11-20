@@ -9,9 +9,10 @@
 //   gravity floats near the top, an early pop is remembered until the lip, and landing slopes give speed back.
 import * as THREE from 'three';
 import { createBikeState, forward, type BikeState, type Intent, type StepEvents } from '../bike/controller';
-import type { BikeSpec } from '../rules/bikes';
+import { kitOf, type BikeSpec } from '../rules/bikes';
 import { trickForSwipe, TRICK_INFO, addToCombo, comboTotal, EMPTY_COMBO } from '../rules/tricks';
 import type { SwipeDir } from '../rules/gestures';
+import { landingCapacity, bottomTier } from '../rules/suspension';
 import { classifyLanding, penaltiesFor, wobbleSteer, pedalPower, CRASH, type Outcome } from '../rules/crash';
 import { BODY, castDown, type Physics } from '../world/physics';
 import { sweepTilted, fitsTilted, pressedTilted } from './body';
@@ -24,7 +25,7 @@ import type { Line } from './course';
 export interface LabIntent extends Intent { crouch: boolean; coast?: boolean; climb?: boolean; loose?: boolean; rough?: boolean }
 export type Move = 'spin' | 'flip';
 // off: a trick done off any line, so it scored nothing (points come from lines over features)
-export interface LabEvents extends StepEvents { off?: true; perfect?: boolean; impact?: number; boost?: number; airTime?: number; slope?: number; pumping?: boolean; move?: Move; dab?: 'stall' | 'ledge' | 'rock' | 'loose' | 'burnt'; burnt?: 'climb' | 'flat'; energyHint?: true; wobbleOut?: true; plow?: boolean; short?: Move; shortPopped?: boolean; spinout?: boolean; wallStop?: boolean; hitRock?: boolean }
+export interface LabEvents extends StepEvents { off?: true; perfect?: boolean; impact?: number; boost?: number; airTime?: number; slope?: number; pumping?: boolean; move?: Move; dab?: 'stall' | 'ledge' | 'rock' | 'loose' | 'burnt'; burnt?: 'climb' | 'flat'; energyHint?: true; wobbleOut?: true; plow?: boolean; short?: Move; shortPopped?: boolean; spinout?: boolean; wallStop?: boolean; hitRock?: boolean; used?: number; bottomed?: boolean }
 
 export interface LabState extends BikeState {
   steer: number; // smoothed steer
@@ -864,16 +865,23 @@ function airStep(s: LabState, input: LabIntent, dt: number, phys: Physics, ev: L
     }
     s.move = null;
   }
-  const outcome = classifyLanding({
+  let outcome = classifyLanding({
     angleErrorDeg: (Math.abs(s.pitch - gp) * 180) / Math.PI + moveLeft,
     fallHeight: s.peakY - groundY,
     impactSpeed: impact,
     trickUnfinished: s.trick !== null,
     autoLand: s.autoLand,
   });
+  // bottoming out: a landing harder than the bike's travel can take clunks (anywhere) and, on flat ground, loses a little
+  // speed (today's heavy landing, now set by travel); well past it, a bobble. Speed loss stays flat-only: dropping the
+  // gate slowed slope landings on robot best rides (Whoop-de-Doo, the tables), see checks/landing-whatif.ts
+  const used = impact / landingCapacity(kitOf(s.bike), T), tier = bottomTier(used, T.bottomMargin);
+  if (tier === 'slammed' && outcome === 'clean') outcome = 'bobble';
   const before = s.speed;
   let after = before + T.landBoost * (Math.max(0, along) * Math.cos(gp) - before);
-  if (impact > 6 && Math.abs(gp) < 0.1) after *= T.flatKeep;
+  if (tier !== 'within' && Math.abs(gp) < 0.1) after *= T.flatKeep;
+  ev.used = used;
+  ev.bottomed = tier !== 'within';
   s.speed = clamp(Math.max(0, after), 0, T.maxSpeed);
   const dist = Math.hypot(s.pos.x - air.x, s.pos.z - air.z);
   if (air.t > 0.25) s.lastJump = { air: air.t, height: s.peakY - air.y, dist };

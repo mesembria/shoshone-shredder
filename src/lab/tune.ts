@@ -22,6 +22,12 @@ export const DEFAULTS = {
   energyCost: 1, gearTop: 0, gearBog: 0, wobbleSpeed: 0, wobbleKick: 0, wobbleGain: 1.5, wobbleLimit: 1, popSoak: 0, plowSize: 0, trickBoost: 0, trickBoostTime: 0.6,
   // walls
   wallCrash: 8, wallBig: 11, rockCrash: 5, bonkCos: 0.92, slideEase: 8,
+  // bottoming out (src/rules/suspension.ts): what the rider's legs take, what each mm of travel adds, air and coil, and
+  // how far past bottoming a landing slams into a bobble. Base 6 is the old heavy-landing number, so a rigid bike loses
+  // speed exactly as before. Margin 1.4 (slam above 2.4 x capacity) clears every star-earning robot landing in the Nov 19
+  // log: the rigid Dirt Jumper reached 2.36 x on Table Row XL, the hardtail 2.16 x. So the bobble only bites on landings
+  // bigger than any challenge asks for.
+  bottomBase: 6, bottomPerMm: 0.025, airFactor: 1.1, coilFactor: 1, bottomMargin: 1.4,
   // suspension, the look (src/bike/springs.ts): spring feel, how far each thing moves it, how much squash the rider keeps
   suspStiff: 160, suspDamp: 14, suspLand: 1, suspChatter: 1, suspPump: 1, suspDive: 1, suspManual: 1, suspScale: 1, squashShare: 0.4, labRear: 0,
   // camera and speed cues
@@ -136,6 +142,11 @@ const GROUPS: { name: string; rows: Row[] }[] = [
     { key: 'slideEase', label: 'Turn along a wall you scrape', min: 1, max: 30, step: 1 },
   ] },
   { name: 'Suspension', rows: [
+    { key: 'bottomBase', label: "Landing: rider's legs take (m/s)", min: 3, max: 10, step: 0.1 },
+    { key: 'bottomPerMm', label: 'Landing: extra per mm of travel', min: 0, max: 0.06, step: 0.001 },
+    { key: 'airFactor', label: 'Air spring resists bottoming', min: 0.8, max: 1.4, step: 0.05 },
+    { key: 'coilFactor', label: 'Coil spring resists bottoming', min: 0.8, max: 1.4, step: 0.05 },
+    { key: 'bottomMargin', label: 'Bobble once past bottoming by (share)', min: 0, max: 1.5, step: 0.05 },
     { key: 'suspStiff', label: 'Look: spring stiffness', min: 40, max: 400, step: 5 },
     { key: 'suspDamp', label: 'Look: spring damping', min: 2, max: 40, step: 0.5 },
     { key: 'suspLand', label: 'Look: landings squish it', min: 0, max: 2, step: 0.05 },

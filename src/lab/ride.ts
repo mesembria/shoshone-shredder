@@ -236,13 +236,14 @@ export async function createRide(canvas: HTMLCanvasElement, o: RideOptions): Pro
       const big = (ev.airTime ?? 0) > 0.45;
       if (ev.landed === 'clean' || ev.landed === 'bobble') {
         if ((ev.airTime ?? 0) > 0.2) {
-          rig.land(strength);
+          rig.land(strength, ev.used ?? 0);
           fx.puff(s.pos, s.surface, strength);
           sound.land(strength, s.surface);
+          if (ev.bottomed) sound.bottom();
         }
         if (ev.landed === 'bobble') hud.callout(calloutFor('bobble'));
         else if (big && (ev.boost ?? 0) > 0.4) hud.callout({ text: 'Sweet!', sub: `+${mph(ev.boost!)} mph`, tone: 'good' });
-        else if (big && (ev.impact ?? 0) > 6 && Math.abs(ev.slope ?? 0) < 0.1) hud.callout({ text: 'Heavy landing', sub: 'land on the slope for speed', tone: 'meh' });
+        else if (big && ev.bottomed && Math.abs(ev.slope ?? 0) < 0.1) hud.callout({ text: 'Bottomed out!', sub: 'land on the slope to save your speed', tone: 'meh' });
         else if (big && s.combo.count > 0) hud.callout(calloutFor('clean'));
       } else {
         fx.burst(s.pos, s.surface);

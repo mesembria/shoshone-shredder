@@ -31,6 +31,7 @@ import { toNextStar, newlyOpenAnywhere, openedLine, nextStarStrip, resultStrip, 
 import { signHtml, nameHtml, stripHtml, paintStrip, medalsHtml, starHtml } from './pieces';
 import { LAB_BIKES, LAB_ORDER, RIDE_KEYS, withLabRear, type LabBikeId } from '../lab/bikes';
 import { createPlankWatch, lapEvent, runEvent, type Where } from './spots';
+import { metresLeft, routeTick, startTrack, type RouteTrack } from './stayOnTrail';
 import { showWho } from './hub/who';
 import { showGarage } from './hub/garage';
 import { showShop } from './hub/shop';
@@ -119,6 +120,9 @@ async function start(index: number, sound: Sound, quick: boolean, bikeOverride?:
   let insideSpot: string | null = startAt; // the ring we're in (or just warped to), so it doesn't pop up again
   let airFromLip = false, wasCrash = false;
   let prevWhere: Where = { x: 0, y: 0, z: 0, grounded: true }, plank = createPlankWatch([]);
+  // a timed run's progress along its route (stay on the trail): from its start line until the run ends; ended keeps the
+  // last one for the result card's how-close line
+  let track: RouteTrack | null = null, ended: RouteTrack | null = null;
   let ride: Ride | null = null;
 
   const where = (s: LabState): Where => ({ x: s.pos.x, y: s.pos.y, z: s.pos.z, grounded: s.grounded });
@@ -152,7 +156,24 @@ async function start(index: number, sound: Sound, quick: boolean, bikeOverride?:
         if (ev.landed) k.fromLip = airFromLip;
         if (run.def.goal.kind === 'lap') k.lap = (ride?.course.pumpTrack && lapEvent(prevWhere, w, ride.course.pumpTrack)) || undefined;
         if (run.def.goal.kind === 'plank') k.plank = plank(w) ?? undefined;
-        if (run.def.goal.kind === 'run' && ride) k.run = runEvent(run.def.id, prevWhere, w, ride.course.runs) ?? undefined;
+        if (run.def.goal.kind === 'run' && ride) {
+          // the start line starts the route; from then on the route says when the finish counts, the top, and a cut
+          const e = runEvent(run.def.id, prevWhere, w, ride.course.runs);
+          if (!track) {
+            if (e === 'start') {
+              track = startTrack(ride.course.runs[run.def.id].route);
+              k.run = 'start';
+            }
+          } else {
+            const c = routeTick(track, s, prevWhere, e === 'finish');
+            if (c.finish) k.run = 'finish';
+            if (c.top) k.top = true;
+            if (c.cut) {
+              ride.crashBack(c.at!);
+              ride.hud.callout({ text: 'You cut the trail!', sub: 'back where you left it', tone: 'bad' });
+            }
+          }
+        }
         k.left = !inZone(r.course.zones[run.def.spot], w.x, w.z);
         prevWhere = w;
         handle(tick(run, k));
@@ -382,11 +403,9 @@ async function start(index: number, sound: Sound, quick: boolean, bikeOverride?:
       }
       case 'run': {
         if (!f.on) return "You didn't cross the start";
-        const line = r.course.runs[f.def.id];
-        const to = line?.finish;
-        if (!to) return '';
-        const m = Math.round(Math.hypot(s.pos.x - (to.a.x + to.b.x) / 2, s.pos.z - (to.a.y + to.b.y) / 2));
-        return `${m} m from the finish`;
+        if (!ended) return '';
+        const { m, to } = metresLeft(ended); // route metres from where you'd got to
+        return `${Math.round(m)} m from the ${to}`;
       }
     }
   }
@@ -441,6 +460,7 @@ async function start(index: number, sound: Sound, quick: boolean, bikeOverride?:
       r.setPaused(tuneOpen);
       s.combo = EMPTY_COMBO; // a combo ridden into the ring isn't this run's
       run = startRun(def);
+      track = ended = null;
       status = { state: 'running', progress: '' };
       // a clean trick landing pushes the bike on, on Downhill runs only
       T.trickBoost = def.group === 'downhill' ? DOWNHILL_BOOST : 0;
@@ -461,6 +481,8 @@ async function start(index: number, sound: Sound, quick: boolean, bikeOverride?:
   function stopRun(): void {
     if (run) insideSpot = ringHere() ?? insideSpot;
     run = null;
+    ended = track;
+    track = null;
     hideRunHud();
     T.trickBoost = 0;
     panel?.refresh();
@@ -590,6 +612,6 @@ async function start(index: number, sound: Sound, quick: boolean, bikeOverride?:
       <p>Ride into a glowing ring to try a challenge. Earn ⚙ cogs, then spend them in the Shop.</p>
       <div class="buttons"><button class="close primary">Let's ride!</button></div>`);
   }
-  (window as unknown as { __game: unknown }).__game = { ride: r, me: () => me, run: () => run, start: (id: string) => startChallenge(CHALLENGES.find((c) => c.id === id)!), modal: () => modal };
+  (window as unknown as { __game: unknown }).__game = { ride: r, me: () => me, run: () => run, start: (id: string) => startChallenge(CHALLENGES.find((c) => c.id === id)!), modal: () => modal, track: () => track };
   (window as unknown as { __lab: unknown }).__lab = { s, T, DEFAULTS, rideKeys: RIDE_KEYS, course: r.course, teleport: r.teleport, pad: r.pad, look: r.look, swap, bike: () => me.riding };
 }

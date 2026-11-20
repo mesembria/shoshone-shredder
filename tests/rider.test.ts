@@ -279,12 +279,43 @@ describe('the kit: fork, rear end, shock and brakes', () => {
     expect(moved).toBeGreaterThan(0.003);
   });
 
-  it('pumping squishes it', () => {
+  it('pumping squishes it once per press, not for as long as it is held', () => {
+    const pump = { braking: 0, rough: false, pumping: true }, off = { braking: 0, rough: false, pumping: false };
     const r = ride('enduro', 1);
-    r.rig.pump();
+    const bars = () => worldY(r.rig.anchors().bars);
     let low = r.rest.bars;
-    for (let i = 0; i < 20; i++) { r.rig.update(r.s, 1 / 60, false); low = Math.min(low, worldY(r.rig.anchors().bars)); }
+    for (let i = 0; i < 20; i++) { r.rig.update(r.s, 1 / 60, false, pump); low = Math.min(low, bars()); }
     expect(r.rest.bars - low).toBeGreaterThan(0.02);
+    // still held: the stroke is over and the bike is back up, and the O-ring only shows the stroke
+    for (let i = 0; i < 40; i++) r.rig.update(r.s, 1 / 60, false, pump);
+    expect(Math.abs(bars() - r.rest.bars)).toBeLessThan(0.01);
+    // let go and press again: another stroke
+    r.rig.update(r.s, 1 / 60, false, off);
+    low = bars();
+    for (let i = 0; i < 20; i++) { r.rig.update(r.s, 1 / 60, false, pump); low = Math.min(low, bars()); }
+    expect(r.rest.bars - low).toBeGreaterThan(0.02);
+  });
+
+  it('a crash keeps the O-ring where the hit before it pushed it', () => {
+    const r = ride('bolinas', 1);
+    const ring = r.rig.root.getObjectByName('oring')!, seal = ring.userData.seal as THREE.Vector3;
+    r.rig.land(0, 0.9);
+    for (let i = 0; i < 60; i++) r.rig.update(r.s, 1 / 60, false);
+    const pushed = ring.position.y;
+    expect(pushed).toBeGreaterThan(seal.y + 0.03);
+    const scene = new THREE.Scene();
+    scene.add(r.rig.root);
+    const body = { translation: () => ({ x: 0, y: 0, z: 0 }), rotation: () => ({ x: 0, y: 0, z: 0, w: 1 }) };
+    const t = { bike: body, rider: body } as unknown as Parameters<typeof r.rig.detach>[0];
+    r.rig.detach(t, scene);
+    // the moving pieces go with the bike: the fork lowers' top-level parent under the scene holds the frame too
+    let top: THREE.Object3D = scene.getObjectByName('forkLowers')!;
+    while (top.parent !== scene) top = top.parent!;
+    expect(top.getObjectByName('wheelFront')).toBeTruthy();
+    expect(top.getObjectByName('thigh0')).toBeUndefined();
+    r.rig.reattach();
+    r.rig.update(r.s, 1 / 60, false);
+    expect(ring.position.y).toBeCloseTo(pushed, 4);
   });
 
   it('the O-ring keeps the deepest hit until resetHits', () => {

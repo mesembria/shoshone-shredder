@@ -176,10 +176,10 @@ export async function createRide(canvas: HTMLCanvasElement, o: RideOptions): Pro
   }
 
   const vel = new THREE.Vector3();
-  let cues = { braking: 0, rough: false }; // for the rig: braking and rough ground move the suspension
+  let cues = { braking: 0, rough: false, pumping: false }; // for the rig: braking, rough ground and pumping move the suspension
   function step(): RideEvents {
     const intent = readIntent();
-    cues = { braking: Math.max(0, -intent.throttle), rough: !!intent.rough };
+    cues = { braking: Math.max(0, -intent.throttle), rough: !!intent.rough, pumping: false };
     if (intent.again) rig.resetHits();
     if (s.pos.y < -20) intent.again = true;
     const ev: RideEvents = stepLab(s, intent, STEP, phys, course.lines);
@@ -207,10 +207,8 @@ export async function createRide(canvas: HTMLCanvasElement, o: RideOptions): Pro
   let climbing: { t: number } | null = null; // riding the climb, from its start line, for the result at the top
   let pumpGlow = 0; // seconds the Jump button stays green after a pump stroke
   function react(ev: RideEvents): void {
-    if (ev.pumping) {
-      pumpGlow = 0.25;
-      rig.pump();
-    }
+    if (ev.pumping) pumpGlow = 0.25;
+    cues.pumping = !!ev.pumping;
     // a trick off any line scores nothing: not named in the combo, and now and then a word on where points come from
     if ((ev.move || ev.trick) && ev.off && s.clock - offTold > 10) {
       offTold = s.clock;

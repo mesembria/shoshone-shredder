@@ -33,7 +33,18 @@ export function stepSpring(sp: Spring, dt: number, rest: number, kind: SpringKin
 }
 
 // The kick that makes a landing from rest peak at about `used` of the travel; all of it or more slams into the stop.
+// Searched once per kick size, kind and spring setting, then remembered: pumping and landings ask for the same few.
+const kicks = new Map<string, number>();
 export function landKick(used: number, kind: SpringKind, t: SpringTune): number {
+  const key = `${used.toFixed(3)} ${kind} ${t.suspStiff} ${t.suspDamp}`;
+  const known = kicks.get(key);
+  if (known !== undefined) return known;
+  const v = searchKick(used, kind, t);
+  if (kicks.size > 500) kicks.clear();
+  kicks.set(key, v);
+  return v;
+}
+function searchKick(used: number, kind: SpringKind, t: SpringTune): number {
   const target = used >= 1 ? 1.2 : Math.max(0, used);
   const peakFor = (v: number) => {
     const sp: Spring = { x: 0, v, deepest: 0 };

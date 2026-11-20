@@ -28,10 +28,10 @@ const CRANK = 0.17;
 
 export interface RiderRig {
   root: THREE.Group;
-  // cues: what the ride is doing that BikeState doesn't say. braking 0..1, rough: riding rough ground. None: brakes open.
-  update(s: BikeState, dt: number, crouching: boolean, cues?: { braking: number; rough: boolean }): void;
+  // cues: what the ride is doing that BikeState doesn't say. braking 0..1, rough: riding rough ground, pumping: pressing
+  // on a pump (one squish per press). None: brakes open.
+  update(s: BikeState, dt: number, crouching: boolean, cues?: { braking: number; rough: boolean; pumping?: boolean }): void;
   land(strength: number, used?: number): void; // used: share of the travel the ride says this landing needed (1 bottoms out)
-  pump(): void; // a pump stroke squishes the suspension
   bump(): void; // a knock: a rock, a curb
   resetHits(): void; // the O-ring back to the top, for a new run
   detach(t: Tumble, scene: THREE.Scene): void;
@@ -221,6 +221,7 @@ export function createRider(bike: BikeSpec, opts: { rider?: boolean } = {}): Rid
   // the fork and shock: springs for the look only (src/bike/springs.ts)
   const springs = { fork: createSpring(), rear: createSpring() };
   const hasFork = kit.fork.kind !== 'rigid', hasRear = kit.rear.design !== 'hardtail';
+  let wasPumping = false;
   const kitPose = { fork: 0, rear: 0, clampFront: 0, clampRear: 0, ring: 0 };
   // pose the kit, then sink and tip the frame and rider so the wheels stay where they were
   function applyKit(): void {
@@ -282,6 +283,12 @@ export function createRider(bike: BikeSpec, opts: { rider?: boolean } = {}): Rid
         springs.fork.v += (Math.random() - 0.5) * k;
         springs.rear.v += (Math.random() - 0.5) * k;
       }
+      // a pump press squishes it once; holding the press doesn't keep it down
+      if (cues?.pumping && !wasPumping) {
+        springs.fork.v += landKick(0.35 * T.suspPump, forkKind, T);
+        springs.rear.v += landKick(0.35 * T.suspPump, rearKind, T);
+      }
+      wasPumping = !!cues?.pumping;
       stepSpring(springs.fork, dt, 0.25 * braking * T.suspDive - 0.3 * manual * T.suspManual, forkKind, T);
       stepSpring(springs.rear, dt, -0.1 * braking * T.suspDive + 0.1 * manual * T.suspManual, rearKind, T);
       applyKit();
@@ -300,10 +307,6 @@ export function createRider(bike: BikeSpec, opts: { rider?: boolean } = {}): Rid
         if (hasFork) springs.fork.v += landKick(used * T.suspLand, forkKind, T);
         if (hasRear) springs.rear.v += landKick(used * T.suspLand, rearKind, T);
       }
-    },
-    pump() {
-      springs.fork.v += landKick(0.35 * T.suspPump, forkKind, T);
-      springs.rear.v += landKick(0.35 * T.suspPump, rearKind, T);
     },
     bump() {
       springs.fork.v += landKick(0.3, forkKind, T);
@@ -361,8 +364,8 @@ export function createRider(bike: BikeSpec, opts: { rider?: boolean } = {}): Rid
         obj.scale.set(1, 1, 1);
       }
       pose.squash = pose.squashV = 0;
-      resetSpring(springs.fork);
-      resetSpring(springs.rear);
+      // back on the bike: the springs start still, but the O-ring keeps the run's deepest hit
+      springs.fork.x = springs.fork.v = springs.rear.x = springs.rear.v = 0;
     },
   };
 }

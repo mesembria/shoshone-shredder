@@ -11,6 +11,7 @@ import { C } from '../../look/palette';
 import { mesh, post, rockGeo, bumpers, DIRT, V, Profile, type Area, type BumperKind, type BumperSpot, type Climb, type Course, type Line, type Station } from '../../lab/course';
 import { mat } from '../../look/toyLook';
 import { car } from '../build';
+import { ROUTE } from '../route';
 import { makePlan, polyline } from './plan';
 import { buildTerrain, type Extent, type HillShape } from '../terrain';
 import { edgeBand, gateAcross, obstacleSpans, placeFeatures, trailPoint, trailRibbon, trailSeed, trailY, TrailPath, type Trail, type TrailFeatures } from '../trail';
@@ -433,14 +434,27 @@ export function buildHill(): Course {
   // both), and Boulder Dash
   const half = TW / 2 + 0.5, hh = H.width / 2 + 0.5, ch = CHUTE_WIDTH / 2 + 0.5;
   const hpBottom = gateAcross(hpt, hp.marks.bottom, hh), hpTop = gateAcross(hpt, hp.marks.top, hh);
+  // each run's route: the trail it follows in riding order. Hairpin ↕ turns round on the top platform, past the top mark,
+  // which counts as on the route but gives no progress
+  const hb = hp.marks.bottom, ht = hp.marks.top, edge = H.width / 2 + ROUTE.lateral;
   const runs: Course['runs'] = {
-    goatUp: { start: gateAcross(up, marks.start, 2), finish: gateAcross(up, marks.top, 2) },
-    goatDown: { start: gateAcross(down, marks.downStart, half), finish: gateAcross(down, marks.foot, half) },
-    goatBoth: { start: gateAcross(up, marks.start, 2), via: gateAcross(up, marks.top, 2), finish: gateAcross(down, marks.foot, half) },
-    hairpinUp: { start: hpBottom, finish: hpTop },
-    hairpinDown: { start: gateAcross(hpt, hp.marks.top, hh, true), finish: gateAcross(hpt, hp.marks.bottom, hh, true) },
-    hairpinBoth: { start: hpBottom, via: hpTop, finish: gateAcross(hpt, hp.marks.bottom, hh, true) },
-    boulderDash: { start: gateAcross(chute, bd.marks.startU + 1, ch), finish: gateAcross(chute, bd.marks.finishU, ch) },
+    goatUp: { start: gateAcross(up, marks.start, 2), finish: gateAcross(up, marks.top, 2), route: { legs: [{ trail: up, u0: marks.start, u1: marks.top }] } },
+    goatDown: { start: gateAcross(down, marks.downStart, half), finish: gateAcross(down, marks.foot, half), route: { legs: [{ trail: down, u0: marks.downStart, u1: marks.foot }] } },
+    goatBoth: {
+      start: gateAcross(up, marks.start, 2), via: gateAcross(up, marks.top, 2), finish: gateAcross(down, marks.foot, half),
+      route: { legs: [{ trail: up, u0: marks.start, u1: up.path.length }, { trail: down, u0: 0, u1: marks.foot }], top: marks.top - marks.start },
+    },
+    hairpinUp: { start: hpBottom, finish: hpTop, route: { legs: [{ trail: hpt, u0: hb, u1: ht }] } },
+    hairpinDown: { start: gateAcross(hpt, ht, hh, true), finish: gateAcross(hpt, hb, hh, true), route: { legs: [{ trail: hpt, u0: ht, u1: hb }] } },
+    hairpinBoth: {
+      start: hpBottom, via: hpTop, finish: gateAcross(hpt, hb, hh, true),
+      route: {
+        legs: [{ trail: hpt, u0: hb, u1: ht }, { trail: hpt, u0: ht, u1: hb }],
+        top: ht - hb,
+        also: [{ trail: hpt, u0: ht, u1: hpt.path.length, off0: -edge, off1: edge }, { trail: top, u0: 0, u1: top.path.length, off0: -(top.width / 2 + ROUTE.lateral), off1: top.width / 2 + ROUTE.lateral }],
+      },
+    },
+    boulderDash: { start: gateAcross(chute, bd.marks.startU + 1, ch), finish: gateAcross(chute, bd.marks.finishU, ch), route: { legs: [{ trail: chute, u0: bd.marks.startU + 1, u1: bd.marks.finishU }] } },
   };
 
   // Stations stand on their trail, 2 cm up, facing along it (or back down it, where a run is ridden in reverse)

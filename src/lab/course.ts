@@ -7,6 +7,7 @@ import { mat } from '../look/toyLook';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { Surface } from '../world/physics';
 import type { Ledge, Trail, Zone } from '../world/trail';
+import type { Route } from '../world/route';
 
 export interface Line {
   lip: THREE.Vector3; // where the takeoff ends (or a skinny starts)
@@ -37,8 +38,9 @@ export interface SceneryPlan {
 export interface Course {
   world: THREE.Group; decor: THREE.Object3D[]; lines: Line[]; gates: Gate[]; bumpers: Bumpers; stations: Record<string, Station>; coast: Zone[]; climb: Climb;
   rough: Zone[]; // rough ground: shakes every bike, kicks it sideways above its wobble speed
-  // timed runs, keyed by challenge id: ridden across the start line, then the via line if there is one, then the finish
-  runs: Record<string, { start: Gate; finish: Gate; via?: Gate }>;
+  // timed runs, keyed by challenge id: ridden across the start line, then the via line if there is one, then the finish,
+  // along the route (the trail stretches the run follows, in riding order: src/world/route.ts)
+  runs: Record<string, { start: Gate; finish: Gate; via?: Gate; route: Route }>;
   // which place this is, where a ride starts when no station is asked for, and the place's own data
   place: string;
   home: string;

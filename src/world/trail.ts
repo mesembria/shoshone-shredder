@@ -51,6 +51,17 @@ export class TrailPath {
     return this;
   }
   get length(): number { return this.us[this.us.length - 1]; }
+  // the heading at u, without a new object (for per-step checks)
+  yawAt(u: number): number {
+    const us = this.us, c = Math.max(0, Math.min(this.length, u));
+    let lo = 0, hi = us.length - 1;
+    while (hi - lo > 1) {
+      const mid = (lo + hi) >> 1;
+      if (us[mid] <= c) lo = mid; else hi = mid;
+    }
+    const span = us[hi] - us[lo], t = span > 0 ? (c - us[lo]) / span : 0;
+    return this.yaws[lo] + (this.yaws[hi] - this.yaws[lo]) * t;
+  }
   at(u: number): { x: number; z: number; yaw: number } {
     const us = this.us, c = Math.max(0, Math.min(this.length, u));
     let lo = 0, hi = us.length - 1;

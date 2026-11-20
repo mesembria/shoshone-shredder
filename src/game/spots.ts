@@ -42,7 +42,8 @@ export function segmentsCross(p: THREE.Vector2, q: THREE.Vector2, a: THREE.Vecto
 // A timed run's start, via or finish line, crossed the right way (the riding direction is to the left of a to b). Runs
 // are keyed by challenge id, so two runs can share a start ring (Goat Ladder ↑ and ↕).
 const pv = new THREE.Vector2(), qv = new THREE.Vector2();
-export function runEvent(id: string, prev: Where, cur: Where, runs: Course['runs']): 'start' | 'via' | 'finish' | null {
+// (only the lines: a run's route is src/game/stayOnTrail.ts's business)
+export function runEvent(id: string, prev: Where, cur: Where, runs: Record<string, Pick<Course['runs'][string], 'start' | 'finish' | 'via'>>): 'start' | 'via' | 'finish' | null {
   const r = runs[id];
   if (!r) return null;
   pv.set(prev.x, prev.z);

@@ -29,7 +29,7 @@ import { airHints } from './unlocks';
 import { EMPTY_COMBO } from '../rules/tricks';
 import { toNextStar, newlyOpenAnywhere, openedLine, nextStarStrip, resultStrip, goalTag, starMedals } from './targets';
 import { signHtml, nameHtml, stripHtml, paintStrip, medalsHtml, starHtml } from './pieces';
-import { LAB_BIKES, LAB_ORDER, RIDE_KEYS, type LabBikeId } from '../lab/bikes';
+import { LAB_BIKES, LAB_ORDER, RIDE_KEYS, withLabRear, type LabBikeId } from '../lab/bikes';
 import { createPlankWatch, lapEvent, runEvent, type Where } from './spots';
 import { showWho } from './hub/who';
 import { showGarage } from './hub/garage';
@@ -103,6 +103,8 @@ async function start(index: number, sound: Sound, quick: boolean, bikeOverride?:
   Object.assign(T, DEFAULTS);
   if (tuning) loadTune();
   applyLoadout(loadoutOf(me));
+  // the bike as ridden: with ?tune=1 the drawer can try another rear design on it (T.labRear)
+  const rideSpec = () => (tuning ? withLabRear(loadoutOf(me).spec, T.labRear) : loadoutOf(me).spec);
   // ?go=<id>: straight into that challenge's countdown, from its spot (only if the rider could start it from the map)
   const goDef = CHALLENGES.find((c) => c.id === params.get('go'));
   const go = goDef && canStart(me, goDef, loadoutOf(me)) ? goDef : null;
@@ -122,7 +124,7 @@ async function start(index: number, sound: Sound, quick: boolean, bikeOverride?:
   const where = (s: LabState): Where => ({ x: s.pos.x, y: s.pos.y, z: s.pos.z, grounded: s.grounded });
 
   ride = await createRide(document.getElementById('game') as HTMLCanvasElement, {
-    bike: loadoutOf(me).spec,
+    bike: rideSpec(),
     start: startAt,
     overlay,
     sound,
@@ -227,7 +229,13 @@ async function start(index: number, sound: Sound, quick: boolean, bikeOverride?:
           drawSwap();
         },
         go: warp,
-        reset: () => applyLoadout(loadoutOf(me)),
+        reset: () => {
+          applyLoadout(loadoutOf(me));
+          r.setBike(rideSpec());
+        },
+        change: (key) => {
+          if (key === 'labRear') r.setBike(rideSpec());
+        },
       })
     : null;
   // names the bike you're riding: a button naming the next bike read as the wrong bike
@@ -241,7 +249,7 @@ async function start(index: number, sound: Sound, quick: boolean, bikeOverride?:
     update((p) => rideBike(p, next) ?? p); // saved: the next ride starts on it
     const l = loadoutOf(me);
     applyLoadout(l);
-    r.setBike(l.spec);
+    r.setBike(rideSpec());
     panel?.refresh();
     drawSwapLabel();
     drawHints();

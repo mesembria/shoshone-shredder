@@ -10,9 +10,20 @@ export interface FrameShape {
   htBottom: [number, number]; // head tube bottom
   bar: [number, number]; // stem top, where the hands go
   barHalf: number; // half the bar width
-  fork: 'plain' | 'travel'; // 'travel' draws fat stanchions
-  shock: boolean; // draws a rear shock
 }
+
+// What a bike's fork, rear end and brakes are: the look and the ride (bottoming out) both read it. Parts patch it.
+export type SpringKind = 'air' | 'coil';
+export type RearDesign = 'singlePivot' | 'linkage' | 'shortLink';
+export type Brake = 'none' | 'rim' | number; // a number is a disc rotor, mm
+export interface Kit {
+  fork: { kind: 'rigid' | SpringKind; travel: number }; // mm, 0 when rigid
+  rear: { design: 'hardtail' | RearDesign; shock: SpringKind; travel: number }; // travel 0 on a hardtail
+  brakeFront: Brake;
+  brakeRear: Brake;
+}
+export interface KitPatch { fork?: Kit['fork']; rear?: Partial<Kit['rear']>; brakeFront?: Brake; brakeRear?: Brake }
+export const DEFAULT_KIT: Kit = { fork: { kind: 'rigid', travel: 0 }, rear: { design: 'hardtail', shock: 'air', travel: 0 }, brakeFront: 'none', brakeRear: 'none' };
 
 export interface BikeSpec {
   id: string; // the game's BikeId for the trail bikes; lab-only bikes have their own
@@ -26,6 +37,12 @@ export interface BikeSpec {
   skid: number; // how much sharper the bike turns with the rear wheel skidding
   riderScale?: number; // whole-rig scale; by default the wheel size sets it, so a smaller bike gets a smaller rider
   frame?: Partial<FrameShape>; // by default, the trail bike shape
+  kit?: Kit; // by default rigid, hardtail, no brakes (the phase-0 bikes)
+}
+
+export const kitOf = (spec: BikeSpec): Kit => spec.kit ?? DEFAULT_KIT;
+export function withKit(kit: Kit, patch: KitPatch): Kit {
+  return { ...kit, ...patch, fork: { ...(patch.fork ?? kit.fork) }, rear: { ...kit.rear, ...patch.rear } };
 }
 
 // The Bayview's smaller, lighter wheels break loose sooner, so it skids round tighter.

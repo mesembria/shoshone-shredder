@@ -147,6 +147,7 @@ export async function createRide(canvas: HTMLCanvasElement, o: RideOptions): Pro
     const st = course.stations[name];
     if (!st) return;
     clearTumble();
+    rig.resetHits();
     placeBike(s, st.pos, st.yaw);
     if (st.speed) s.speed = st.speed;
     prev.set(s.pos.x, s.pos.z); // a jump across the map isn't riding through gates
@@ -175,8 +176,11 @@ export async function createRide(canvas: HTMLCanvasElement, o: RideOptions): Pro
   }
 
   const vel = new THREE.Vector3();
+  let cues = { braking: 0, rough: false, pumping: false }; // for the rig: braking, rough ground and pumping move the suspension
   function step(): RideEvents {
     const intent = readIntent();
+    cues = { braking: Math.max(0, -intent.throttle), rough: !!intent.rough, pumping: false };
+    if (intent.again) rig.resetHits();
     if (s.pos.y < -20) intent.again = true;
     const ev: RideEvents = stepLab(s, intent, STEP, phys, course.lines);
     if (s.crash && !tumble) {
@@ -204,6 +208,7 @@ export async function createRide(canvas: HTMLCanvasElement, o: RideOptions): Pro
   let pumpGlow = 0; // seconds the Jump button stays green after a pump stroke
   function react(ev: RideEvents): void {
     if (ev.pumping) pumpGlow = 0.25;
+    cues.pumping = !!ev.pumping;
     // a trick off any line scores nothing: not named in the combo, and now and then a word on where points come from
     if ((ev.move || ev.trick) && ev.off && s.clock - offTold > 10) {
       offTold = s.clock;
@@ -229,13 +234,14 @@ export async function createRide(canvas: HTMLCanvasElement, o: RideOptions): Pro
       const big = (ev.airTime ?? 0) > 0.45;
       if (ev.landed === 'clean' || ev.landed === 'bobble') {
         if ((ev.airTime ?? 0) > 0.2) {
-          rig.land(strength);
+          rig.land(strength, ev.used ?? 0);
           fx.puff(s.pos, s.surface, strength);
           sound.land(strength, s.surface);
+          if (ev.bottomed) sound.bottom();
         }
         if (ev.landed === 'bobble') hud.callout(calloutFor('bobble'));
         else if (big && (ev.boost ?? 0) > 0.4) hud.callout({ text: 'Sweet!', sub: `+${mph(ev.boost!)} mph`, tone: 'good' });
-        else if (big && (ev.impact ?? 0) > 6 && Math.abs(ev.slope ?? 0) < 0.1) hud.callout({ text: 'Heavy landing', sub: 'land on the slope for speed', tone: 'meh' });
+        else if (big && ev.bottomed && Math.abs(ev.slope ?? 0) < 0.1) hud.callout({ text: 'Bottomed out!', sub: 'land on the slope to save your speed', tone: 'meh' });
         else if (big && s.combo.count > 0) hud.callout(calloutFor('clean'));
       } else {
         fx.burst(s.pos, s.surface);
@@ -285,6 +291,7 @@ export async function createRide(canvas: HTMLCanvasElement, o: RideOptions): Pro
     }
     if (ev.bump) {
       sound.bump();
+      rig.bump();
       hud.callout(calloutFor('bump'));
     }
     if (ev.scrape && !scrapeCooldown) {
@@ -357,7 +364,7 @@ export async function createRide(canvas: HTMLCanvasElement, o: RideOptions): Pro
     if (tumble) rig.followTumble(tumble);
     else {
       rig.root.rotation.set(0, rig.root.rotation.y, 0); // clear last frame's spin or flip
-      rig.update(s, dt, pad.crouching(now));
+      rig.update(s, dt, pad.crouching(now), cues);
       showMove(rig.root, s);
     }
     cam.update(s, paused ? 0 : dt);

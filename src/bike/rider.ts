@@ -1,21 +1,21 @@
 // The rider and bike you see. It reads BikeState and never changes it.
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import type { BikeSpec, FrameShape } from '../rules/bikes';
+import { kitOf, type BikeSpec, type FrameShape } from '../rules/bikes';
 import type { Tumble } from '../world/physics';
 import type { BikeState } from './controller';
 import { C } from '../look/palette';
 import { mat } from '../look/toyLook';
+import { UP, V, rodGeo, roundBox, piece } from './geo';
+import { buildKit } from './kit';
+import { createSpring, landKick, resetSpring, stepSpring } from './springs';
+import { T } from '../lab/tune';
 
 // Modeled for a 0.36 m wheel, then scaled to each bike, so the smaller trail bike gets a smaller rider too. A bike
 // can instead set its own rider scale and frame shape: the dirt jumper and enduro carry the same rider on very
 // different frames, and the rider holds the bars wherever they are.
 export const RIG_WHEEL = 0.36;
-const UP = new THREE.Vector3(0, 1, 0);
-const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
 export const DEFAULT_FRAME: FrameShape = {
-  axle: 0.58, bb: [-0.04, 0.33], seat: [-0.27, 0.9], htTop: [0.36, 0.92], htBottom: [0.44, 0.72], bar: [0.42, 1.04], barHalf: 0.34, fork: 'plain', shock: false,
+  axle: 0.58, bb: [-0.04, 0.33], seat: [-0.27, 0.9], htTop: [0.36, 0.92], htBottom: [0.44, 0.72], bar: [0.42, 1.04], barHalf: 0.34,
 };
 export const riderScaleOf = (spec: BikeSpec): number => spec.riderScale ?? spec.wheelRadius / RIG_WHEEL;
 // The bike's shape in model units, with its wheel radius (model units too).
@@ -28,8 +28,12 @@ const CRANK = 0.17;
 
 export interface RiderRig {
   root: THREE.Group;
-  update(s: BikeState, dt: number, crouching: boolean): void;
-  land(strength: number): void;
+  // cues: what the ride is doing that BikeState doesn't say. braking 0..1, rough: riding rough ground, pumping: pressing
+  // on a pump (one squish per press). None: brakes open.
+  update(s: BikeState, dt: number, crouching: boolean, cues?: { braking: number; rough: boolean; pumping?: boolean }): void;
+  land(strength: number, used?: number): void; // used: share of the travel the ride says this landing needed (1 bottoms out)
+  bump(): void; // a knock: a rock, a curb
+  resetHits(): void; // the O-ring back to the top, for a new run
   detach(t: Tumble, scene: THREE.Scene): void;
   followTumble(t: Tumble): void;
   reattach(): void;
@@ -61,25 +65,6 @@ export function kneeAt3(h: THREE.Vector3, f: THREE.Vector3, out: THREE.Vector3, 
   return out.copy(h).addScaledVector(legDir, along).addScaledVector(bendDir, up);
 }
 
-function rodGeo(a: THREE.Vector3, b: THREE.Vector3, r: number, seg = 8): THREE.BufferGeometry {
-  const dir = new THREE.Vector3().subVectors(b, a);
-  const g = new THREE.CylinderGeometry(r, r, dir.length(), seg);
-  g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(UP, dir.clone().normalize()));
-  const mid = a.clone().addScaledVector(dir, 0.5);
-  return g.translate(mid.x, mid.y, mid.z);
-}
-const roundBox = (w: number, h: number, d: number, r: number) => new RoundedBoxGeometry(w, h, d, 2, r);
-
-// Static pieces that share a color merge into one mesh, to keep draw calls low on the iPad.
-// RoundedBoxGeometry has no index while the built-in shapes do, so merge everything unindexed.
-function piece(parent: THREE.Object3D, geos: THREE.BufferGeometry[], color: number): THREE.Mesh {
-  const geo = geos.length === 1 ? geos[0] : mergeGeometries(geos.map((g) => (g.index ? g.toNonIndexed() : g)));
-  const m = new THREE.Mesh(geo, mat(color));
-  m.castShadow = true;
-  parent.add(m);
-  return m;
-}
-
 function wheel(parent: THREE.Object3D, x: number, r: number): THREE.Group {
   const w = new THREE.Group();
   w.position.set(x, r, 0);
@@ -95,7 +80,10 @@ const wrap = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
 export function createRider(bike: BikeSpec, opts: { rider?: boolean } = {}): RiderRig {
-  const f = frameOf(bike), WR = f.wheel, AXLE = f.axle;
+  const f = frameOf(bike), WR = f.wheel, AXLE = f.axle, kit = kitOf(bike);
+  // the share of the landing squash the rider still takes: all of it on a rigid bike, less the more travel it has
+  const squashKeep = 1 - (1 - T.squashShare) * Math.min(1, (kit.fork.travel + kit.rear.travel) / 340);
+  const forkKind = kit.fork.kind === 'rigid' ? 'air' : kit.fork.kind, rearKind = kit.rear.shock;
   const P = (p: [number, number], z = 0) => V(p[0], p[1], z);
   const BB = P(f.bb), SEAT = P(f.seat), HT_T = P(f.htTop), HT_B = P(f.htBottom), BAR = P(f.bar);
   const root = new THREE.Group();
@@ -108,6 +96,7 @@ export function createRider(bike: BikeSpec, opts: { rider?: boolean } = {}): Rid
   root.add(pitchG);
   pitchG.add(manualG);
   manualG.add(body);
+  let crouchLift = 0; // how far the rider crouches (or pants) on the bike, apart from the suspension
   const bikePart = new THREE.Group();
   const riderPart = new THREE.Group();
   body.add(bikePart, riderPart);
@@ -116,36 +105,27 @@ export function createRider(bike: BikeSpec, opts: { rider?: boolean } = {}): Rid
   rider.position.set(BAR.x - DEFAULT_FRAME.bar[0], BAR.y - DEFAULT_FRAME.bar[1], 0);
   if (opts.rider !== false) riderPart.add(rider);
 
-  // the bike
-  const wheels = [wheel(bikePart, -AXLE, WR), wheel(bikePart, AXLE, WR)];
+  // the bike: the frame (chassis) sinks on the suspension; the kit hangs the wheels from its fork and rear end
+  const chassis = new THREE.Group();
+  bikePart.add(chassis);
+  const wheels = [wheel(chassis, -AXLE, WR), wheel(chassis, AXLE, WR)];
+  wheels[0].name = 'wheelRear';
+  wheels[1].name = 'wheelFront';
   const frame = [rodGeo(BB, HT_B, 0.045), rodGeo(SEAT, HT_T, 0.04), rodGeo(BB, SEAT, 0.042), rodGeo(HT_B, HT_T, 0.05)];
   const fork: THREE.BufferGeometry[] = [];
-  for (const dz of [-0.07, 0.07]) {
-    frame.push(rodGeo(V(BB.x, BB.y, dz), V(-AXLE, WR, dz), 0.025), rodGeo(V(SEAT.x + 0.02, SEAT.y - 0.06, dz), V(-AXLE, WR, dz), 0.022));
-    const crown = V(HT_B.x, HT_B.y, dz), axle = V(AXLE, WR, dz);
-    if (f.fork === 'travel') {
-      // fat stanchions down to the lowers, and a brace across the top of the lowers
-      const knee = crown.clone().lerp(axle, 0.5);
-      fork.push(rodGeo(crown, knee, 0.05), rodGeo(knee, axle, 0.038));
-    } else fork.push(rodGeo(crown, axle, 0.035));
-  }
-  if (f.fork === 'travel') {
-    const k = HT_B.clone().lerp(V(AXLE, WR, 0), 0.5);
-    fork.push(rodGeo(V(k.x, k.y, -0.08), V(k.x, k.y, 0.08), 0.022));
-  }
-  const frameMesh = piece(bikePart, frame, bike.frameColor);
-  piece(bikePart, fork, 0xc9ccd0);
-  if (f.shock) piece(bikePart, [rodGeo(BB.clone().lerp(SEAT, 0.5), SEAT.clone().lerp(HT_T, 0.35), 0.045)], 0xffc22e);
-  piece(bikePart, [rodGeo(HT_T, BAR, 0.03), rodGeo(P(f.bar, -f.barHalf), P(f.bar, f.barHalf), 0.022), roundBox(0.28, 0.07, 0.13, 0.03).translate(SEAT.x - 0.02, SEAT.y + 0.035, 0)], C.black);
+  const kitRig = buildKit(kit, f, { chassis, frontWheel: wheels[1], rearWheel: wheels[0], frame, fork }, bike.frameColor, riderScaleOf(bike), T.suspScale);
+  const frameMesh = piece(chassis, frame, bike.frameColor);
+  if (fork.length) piece(chassis, fork, 0xc9ccd0);
+  piece(chassis, [rodGeo(HT_T, BAR, 0.03), rodGeo(P(f.bar, -f.barHalf), P(f.bar, f.barHalf), 0.022), roundBox(0.28, 0.07, 0.13, 0.03).translate(SEAT.x - 0.02, SEAT.y + 0.035, 0)], C.black);
   const crank = new THREE.Group();
   crank.position.copy(BB);
-  bikePart.add(crank);
+  chassis.add(crank);
   const marker = (parent: THREE.Object3D, p: THREE.Vector3) => { const o = new THREE.Object3D(); o.position.copy(p); parent.add(o); return o; };
   const anchorSet: Record<AnchorName, THREE.Object3D> = {
-    fork: marker(bikePart, HT_B.clone().lerp(V(AXLE, WR, 0), 0.4)),
+    fork: marker(chassis, HT_B.clone().lerp(V(AXLE, WR, 0), 0.4)),
     frontTire: marker(wheels[1], V(WR, 0, 0)), // on the wheel, so it spins
     rearHub: marker(wheels[0], V(0, 0, 0)),
-    bars: marker(bikePart, BAR.clone()),
+    bars: marker(chassis, BAR.clone()),
     cranks: marker(crank, V(0, 0, 0)),
   };
   piece(crank, [-1, 1].map((s) => new THREE.BoxGeometry(0.04, CRANK, 0.03).translate(0, s * CRANK / 2, s * 0.09)), C.black);
@@ -220,7 +200,7 @@ export function createRider(bike: BikeSpec, opts: { rider?: boolean } = {}): Rid
   // footDown 0..1: the first leg swings off its pedal to the ground beside the bike (a dab, or resting)
   function poseLegs(theta: number, footDown = 0): void {
     crank.rotation.z = theta;
-    const lift = riderPart.position.y; // feet stay on the pedals when the rider crouches
+    const lift = crouchLift; // feet stay on the pedals when the rider crouches (the suspension moves rider and pedals together)
     for (const L of legs) {
       // pedals turn round the frame's bottom bracket; the legs work in the rider's own (moved) frame
       foot.set(BB.x - rider.position.x - L.s * CRANK * Math.sin(theta), BB.y - rider.position.y + L.s * CRANK * Math.cos(theta) - lift, L.s * 0.13);
@@ -238,6 +218,23 @@ export function createRider(bike: BikeSpec, opts: { rider?: boolean } = {}): Rid
   }
   poseLegs(0);
 
+  // the fork and shock: springs for the look only (src/bike/springs.ts)
+  const springs = { fork: createSpring(), rear: createSpring() };
+  const hasFork = kit.fork.kind !== 'rigid', hasRear = kit.rear.design !== 'hardtail';
+  let wasPumping = false;
+  const kitPose = { fork: 0, rear: 0, clampFront: 0, clampRear: 0, ring: 0 };
+  // pose the kit, then sink and tip the frame and rider so the wheels stay where they were
+  function applyKit(): void {
+    kitPose.fork = hasFork ? springs.fork.x : 0;
+    kitPose.rear = hasRear ? springs.rear.x : 0;
+    kitPose.ring = springs.fork.deepest;
+    const { dropFront, dropRear } = kitRig.pose(kitPose);
+    const sink = -(dropFront + dropRear) / 2, tilt = (dropRear - dropFront) / (2 * AXLE);
+    chassis.position.y = sink;
+    chassis.rotation.z = tilt;
+    riderPart.position.y = crouchLift + sink;
+    riderPart.rotation.z = tilt;
+  }
   const pose = { pitch: 0, manual: 0, lean: 0, table: 0, arms: 0, crouch: 0, squash: 0, squashV: 0, kick: 0, foot: 0 };
   let clock = 0, crankA = 0, lastYaw: number | null = null;
   const tumbleRef = { bike: { off: new THREE.Vector3(), q: new THREE.Quaternion() }, rider: { off: new THREE.Vector3(), q: new THREE.Quaternion() } };
@@ -246,7 +243,7 @@ export function createRider(bike: BikeSpec, opts: { rider?: boolean } = {}): Rid
 
   return {
     root,
-    update(s, dt, crouching) {
+    update(s, dt, crouching, cues) {
       if (lift0) body.position.y = lift0 = 0; // the game takes over from a stand pose
       const yawRate = lastYaw === null || dt <= 0 ? 0 : wrap(s.yaw - lastYaw) / dt;
       lastYaw = s.yaw;
@@ -276,7 +273,25 @@ export function createRider(bike: BikeSpec, opts: { rider?: boolean } = {}): Rid
       body.scale.set(1 + pose.squash * 0.5, 1 - pose.squash, 1 + pose.squash * 0.5);
       // winded after a crash, or nearly out of energy: the rider pants
       const panting = s.winded > 0 || (lab.energy ?? 1) < 0.2;
-      riderPart.position.y = -0.12 * pose.crouch + (panting ? 0.025 * Math.sin(clock * 14) : 0);
+      crouchLift = -0.12 * pose.crouch + (panting ? 0.025 * Math.sin(clock * 14) : 0);
+      // braking dives the fork and lifts the rear a little; a manual stretches the fork and squats the rear
+      const braking = cues?.braking ?? 0, manual = s.manual > 0 ? 1 : 0;
+      kitPose.clampFront = ease(kitPose.clampFront, braking, 20);
+      kitPose.clampRear = kitPose.clampFront;
+      if (cues?.rough && s.grounded && s.speed > 0.5) {
+        const k = 1.6 * T.suspChatter * Math.min(1, s.speed / 6) * dt * 60;
+        springs.fork.v += (Math.random() - 0.5) * k;
+        springs.rear.v += (Math.random() - 0.5) * k;
+      }
+      // a pump press squishes it once; holding the press doesn't keep it down
+      if (cues?.pumping && !wasPumping) {
+        springs.fork.v += landKick(0.35 * T.suspPump, forkKind, T);
+        springs.rear.v += landKick(0.35 * T.suspPump, rearKind, T);
+      }
+      wasPumping = !!cues?.pumping;
+      stepSpring(springs.fork, dt, 0.25 * braking * T.suspDive - 0.3 * manual * T.suspManual, forkKind, T);
+      stepSpring(springs.rear, dt, -0.1 * braking * T.suspDive + 0.1 * manual * T.suspManual, rearKind, T);
+      applyKit();
       pose.foot = ease(pose.foot, s.grounded && ((lab.dab ?? 0) > 0 || lab.resting) ? 1 : 0, 12);
       for (const a of arms) a.g.rotation.set(a.s * 0.5 * pose.arms, 0, 2.1 * pose.arms);
       const roll = (s.speed * dt) / bike.wheelRadius;
@@ -286,8 +301,19 @@ export function createRider(bike: BikeSpec, opts: { rider?: boolean } = {}): Rid
       stars.visible = s.stars > 0;
       stars.rotation.y += dt * 5;
     },
-    land(strength) {
-      pose.squashV += 2.6 * clamp(strength, 0, 1.5);
+    land(strength, used = 0) {
+      pose.squashV += 2.6 * clamp(strength, 0, 1.5) * squashKeep;
+      if (used > 0) {
+        if (hasFork) springs.fork.v += landKick(used * T.suspLand, forkKind, T);
+        if (hasRear) springs.rear.v += landKick(used * T.suspLand, rearKind, T);
+      }
+    },
+    bump() {
+      springs.fork.v += landKick(0.3, forkKind, T);
+      springs.rear.v += landKick(0.2, rearKind, T);
+    },
+    resetHits() {
+      springs.fork.deepest = springs.rear.deepest = 0;
     },
     detach(t, scene) {
       for (const [obj, b, ref] of [[bikePart, t.bike, tumbleRef.bike], [riderPart, t.rider, tumbleRef.rider]] as const) {
@@ -308,7 +334,10 @@ export function createRider(bike: BikeSpec, opts: { rider?: boolean } = {}): Rid
     setColor(color) {
       // materials are shared by color, so the frame takes its own before changing
       const m = frameMesh.material as THREE.MeshStandardMaterial;
-      if (!own) frameMesh.material = (own = m.clone());
+      if (!own) {
+        own = m.clone();
+        for (const p of [frameMesh, ...kitRig.painted]) p.material = own;
+      }
       own.color.set(color);
     },
     setRiderVisible(v) {
@@ -319,7 +348,10 @@ export function createRider(bike: BikeSpec, opts: { rider?: boolean } = {}): Rid
       body.position.y = TIRE;
       pose.foot = 1;
       pose.lean = pose.table = pose.crouch = 0;
-      riderPart.position.y = 0;
+      resetSpring(springs.fork);
+      resetSpring(springs.rear);
+      crouchLift = 0;
+      applyKit();
       body.rotation.x = dabSide * STAND_LEAN;
       poseLegs(crankA, 1);
     },
@@ -332,6 +364,8 @@ export function createRider(bike: BikeSpec, opts: { rider?: boolean } = {}): Rid
         obj.scale.set(1, 1, 1);
       }
       pose.squash = pose.squashV = 0;
+      // back on the bike: the springs start still, but the O-ring keeps the run's deepest hit
+      springs.fork.x = springs.fork.v = springs.rear.x = springs.rear.v = 0;
     },
   };
 }

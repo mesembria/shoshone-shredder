@@ -2,7 +2,7 @@
 // the bike's base ride, so a loadout is bike + parts and nothing in the lab needs to know a part's name.
 import { BIKE_RIDE, LAB_BIKES, RIDE_KEYS, type LabBikeId } from '../lab/bikes';
 import { DEFAULTS, T, type TuneKey } from '../lab/tune';
-import type { BikeSpec } from '../rules/bikes';
+import { DEFAULT_KIT, withKit, type BikeSpec, type KitPatch } from '../rules/bikes';
 
 export type Slot = 'suspension' | 'tires' | 'brakes' | 'cockpit' | 'drivetrain';
 export const SLOTS: Slot[] = ['suspension', 'tires', 'brakes', 'cockpit', 'drivetrain'];
@@ -12,6 +12,7 @@ export interface PartDef {
   price: number; stock?: true; // exactly one stock part per bike per slot
   ride: Partial<Record<TuneKey, number>>; // ADDED to the bike's base value
   spin?: number; headAngle?: number; weight?: number; // added to the BikeSpec spin, the sheet's head angle (deg), kg
+  kit?: KitPatch; // what it changes on the bike's fork, rear or brakes, for the look and bottoming out
   does: string; // one kid sentence
 }
 
@@ -30,7 +31,7 @@ const stock = (bike: LabBikeId, slot: Slot, name: string, spec: string, does: st
 export const PARTS: PartDef[] = [
   // Hand-me-down Hardtail: every slot is a tired original, each with one upgrade
   stock('hardtail', 'suspension', 'Rigid fork', 'Steel fork · no travel', 'Rattles on rough ground'),
-  { id: 'hardtail-air-fork', bike: 'hardtail', slot: 'suspension', name: 'Air fork', spec: 'Air fork · 120 mm', price: 55, weight: 0.4, headAngle: -1,
+  { id: 'hardtail-air-fork', bike: 'hardtail', slot: 'suspension', name: 'Air fork', spec: 'Air fork · 120 mm', price: 55, weight: 0.4, headAngle: -1, kit: { fork: { kind: 'air', travel: 120 } },
     ride: { wobbleKick: -0.3, wobbleSpeed: 2, rockCrash: 1.5, minRadius: 0.1, steerResponse: -0.5 }, does: 'Kicks less, wobbles later and takes rock hits better, turns a touch wider' },
   stock('hardtail', 'tires', 'Worn tires', 'Knobbies · 2.1 in', 'Slides on loose ground'),
   { id: 'hardtail-sticky-tires', bike: 'hardtail', slot: 'tires', name: 'Sticky tires', spec: 'Sticky rubber · 2.4 in', price: 45, weight: 0.3,
@@ -38,7 +39,7 @@ export const PARTS: PartDef[] = [
   { id: 'hardtail-fast-tires', bike: 'hardtail', slot: 'tires', name: 'Fast tires', spec: 'Light knobbies · 2.0 in', price: 45, spin: 0.2, weight: -0.4,
     ride: { rolling: -0.03, grip: -1 }, does: 'Roll faster and spin quicker in the air, but slide more' },
   stock('hardtail', 'brakes', 'Rim brakes', 'Cable rim brakes', 'Stops, eventually'),
-  { id: 'hardtail-hydraulic-brakes', bike: 'hardtail', slot: 'brakes', name: 'Hydraulic brakes', spec: 'Hydraulic disc · 160 mm', price: 50, weight: 0.1,
+  { id: 'hardtail-hydraulic-brakes', bike: 'hardtail', slot: 'brakes', name: 'Hydraulic brakes', spec: 'Hydraulic disc · 160 mm', price: 50, weight: 0.1, kit: { brakeFront: 160, brakeRear: 160 },
     ride: { brake: 4 }, does: 'Stop much harder' },
   stock('hardtail', 'cockpit', 'Skinny bars', 'Flat bar · 680 mm', 'Twitchy and narrow'),
   { id: 'hardtail-wide-bars', bike: 'hardtail', slot: 'cockpit', name: 'Wide bars', spec: 'Riser bar · 760 mm', price: 45,
@@ -62,24 +63,24 @@ export const PARTS: PartDef[] = [
 
   // Teal Enduro: plush, heavy, big brakes
   stock('enduro', 'suspension', 'Stock shock', 'Air shock · 170 mm', 'Soft and even'),
-  { id: 'enduro-coil-shock', bike: 'enduro', slot: 'suspension', name: 'Coil shock', spec: 'Coil shock · 170 mm', price: 80, weight: 0.6,
+  { id: 'enduro-coil-shock', bike: 'enduro', slot: 'suspension', name: 'Coil shock', spec: 'Coil shock · 170 mm', price: 80, weight: 0.6, kit: { rear: { shock: 'coil' } },
     ride: { plowSize: 0.1, popSoak: 0.15 }, does: 'Plows through rocks, but soaks up your pop' },
-  { id: 'enduro-air-shock', bike: 'enduro', slot: 'suspension', name: 'Air shock', spec: 'Tuned air shock · 170 mm', price: 80, weight: -0.3,
+  { id: 'enduro-air-shock', bike: 'enduro', slot: 'suspension', name: 'Air shock', spec: 'Tuned air shock · 170 mm', price: 80, weight: -0.3, kit: { rear: { shock: 'air' } },
     ride: { popSoak: -0.2, plowSize: -0.1 }, does: 'Pops better off jumps, plows rocks less' },
   stock('enduro', 'tires', 'Trail tires', 'Knobbies · 2.5 in', 'Big and grippy'),
   { id: 'enduro-light-wheels', bike: 'enduro', slot: 'tires', name: 'Light wheels', spec: 'Light carbon wheels · 29 in', price: 90, spin: 0.15, weight: -0.8,
     ride: { rolling: -0.03, wobbleKick: 0.1 }, does: 'Spin quicker in the air, a bit bouncier' },
   stock('enduro', 'brakes', '2-piston brakes', '2-piston disc · 180 mm', 'Good stopping power'),
-  { id: 'enduro-4-piston-brakes', bike: 'enduro', slot: 'brakes', name: '4-piston brakes', spec: '4-piston disc · 203 mm', price: 70, weight: 0.2,
+  { id: 'enduro-4-piston-brakes', bike: 'enduro', slot: 'brakes', name: '4-piston brakes', spec: '4-piston disc · 203 mm', price: 70, weight: 0.2, kit: { brakeFront: 203, brakeRear: 203 },
     ride: { brake: 6, skidDecel: 1.5 }, does: 'Stop super hard, but they grab and skid' },
   stock('enduro', 'cockpit', 'Wide bars', 'Riser bar · 800 mm', 'Wide and calm'),
   stock('enduro', 'drivetrain', '1 x 12 gears', '1 x 12 speed', 'Wide range for long climbs'),
 
   // Tan Bolinas Ridge: the all-rounder
   stock('bolinas', 'suspension', 'Trail fork', 'Air fork · 130 mm', 'Does a bit of everything'),
-  { id: 'bolinas-long-fork', bike: 'bolinas', slot: 'suspension', name: 'Long fork', spec: 'Air fork · 140 mm', price: 70, weight: 0.2, headAngle: -1,
+  { id: 'bolinas-long-fork', bike: 'bolinas', slot: 'suspension', name: 'Long fork', spec: 'Air fork · 140 mm', price: 70, weight: 0.2, headAngle: -1, kit: { fork: { kind: 'air', travel: 140 } },
     ride: { wobbleSpeed: 2, rockCrash: 0.5, minRadius: 0.15, steerResponse: -0.7 }, does: 'Steadier and rolls over bigger things, turns a bit wider' },
-  { id: 'bolinas-short-fork', bike: 'bolinas', slot: 'suspension', name: 'Short fork', spec: 'Air fork · 120 mm', price: 70, weight: -0.2, headAngle: 1,
+  { id: 'bolinas-short-fork', bike: 'bolinas', slot: 'suspension', name: 'Short fork', spec: 'Air fork · 120 mm', price: 70, weight: -0.2, headAngle: 1, kit: { fork: { kind: 'air', travel: 120 } },
     ride: { wobbleSpeed: -2, rockCrash: -0.5, minRadius: -0.15, steerResponse: 0.7 }, does: 'Quicker to turn, wobbles sooner at speed' },
   stock('bolinas', 'tires', 'Trail tires', 'Knobbies · 2.35 in', 'Good all round'),
   { id: 'bolinas-sticky-tires', bike: 'bolinas', slot: 'tires', name: 'Sticky tires', spec: 'Sticky rubber · 2.4 in', price: 50, weight: 0.3,
@@ -126,6 +127,7 @@ export function loadout(bike: LabBikeId, fitted: Partial<Fitted>, color?: number
     ids[s] = p.id;
     for (const [k, v] of Object.entries(p.ride) as [TuneKey, number][]) tune[k] += v;
     spec.spin += p.spin ?? 0;
+    if (p.kit) spec.kit = withKit(spec.kit ?? DEFAULT_KIT, p.kit);
     sheet.headAngle += p.headAngle ?? 0;
     sheet.weight += p.weight ?? 0;
   }

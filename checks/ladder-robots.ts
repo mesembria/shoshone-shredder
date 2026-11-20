@@ -303,6 +303,9 @@ const HAIRPIN_DOWN: Style[] = [
   ...HAIRPIN,
   { name: 'pushes, brakes for hairpins, pops, tricks', stick: (s, h) => (turnAhead(s) ? -1 : h.loose ? 0.4 : 1), pop: true, trick: 'best', chain: 2 },
   { name: 'brakes late for hairpins, pops, tricks', stick: (s, h) => (turnAhead(s, 1.25) ? -1 : h.loose ? 0.4 : 1), pop: true, trick: 'best', chain: 2 },
+  // a bike that keeps its speed off big landings (travel soaks them, Nov 19) reaches the hairpins faster: a good rider
+  // brakes a touch later still. Without it the robot's one late-braking script lost the Enduro's 3★ by 0.4 s
+  { name: 'brakes later for hairpins, pops, tricks', stick: (s, h) => (turnAhead(s, 1.35) ? -1 : h.loose ? 0.4 : 1), pop: true, trick: 'best', chain: 2 },
   { name: 'pedals to 8, brakes for hairpins, pops, tricks', stick: (s, h) => (turnAhead(s) ? -1 : s.speed > 8 ? -1 : 1), pop: true, trick: 'best', chain: 2 },
 ];
 const CHUTE_STYLES: Style[] = [

@@ -23,7 +23,7 @@ export const DEFAULTS = {
   // walls
   wallCrash: 8, wallBig: 11, rockCrash: 5, bonkCos: 0.92, slideEase: 8,
   // suspension, the look (src/bike/springs.ts): spring feel, how far each thing moves it, how much squash the rider keeps
-  suspStiff: 160, suspDamp: 14, suspLand: 1, suspChatter: 1, suspPump: 1, suspDive: 1, suspManual: 1, suspScale: 1, squashShare: 0.4,
+  suspStiff: 160, suspDamp: 14, suspLand: 1, suspChatter: 1, suspPump: 1, suspDive: 1, suspManual: 1, suspScale: 1, squashShare: 0.4, labRear: 0,
   // camera and speed cues
   camBack: 4.6, camUp: 2.0, camAhead: 4, camYaw: 5, fovBase: 52, fovFast: 74, shake: 0.04, speedLines: 1,
 };
@@ -145,6 +145,7 @@ const GROUPS: { name: string; rows: Row[] }[] = [
     { key: 'suspManual', label: 'Look: manual stretches the fork', min: 0, max: 2, step: 0.05 },
     { key: 'suspScale', label: 'Look: drawn travel (1 = 0.8 × real)', min: 0.3, max: 2, step: 0.05 },
     { key: 'squashShare', label: 'Look: rider squash kept on a long-travel bike', min: 0, max: 1, step: 0.05 },
+    { key: 'labRear', label: 'Rear design (Enduro): 0 its own, 1 single pivot, 2 linkage, 3 short link', min: 0, max: 3, step: 1 },
   ] },
   { name: 'Camera and speed', rows: [
     { key: 'camBack', label: 'Camera distance', min: 2, max: 10, step: 0.1 },
@@ -194,7 +195,7 @@ function copyText(text: string): Promise<boolean> {
   return Promise.resolve(ok);
 }
 
-export function createPanel(root: HTMLElement, stations: string[], on: { open(open: boolean): void; go(station: string): void; reset(): void }): { toggle(): void; refresh(): void } {
+export function createPanel(root: HTMLElement, stations: string[], on: { open(open: boolean): void; go(station: string): void; reset(): void; change?(key: TuneKey): void }): { toggle(): void; refresh(): void } {
   const toggle = document.createElement('button');
   toggle.className = 'tune-toggle';
   toggle.textContent = '⚙ Tune';
@@ -239,6 +240,7 @@ export function createPanel(root: HTMLElement, stations: string[], on: { open(op
         out.textContent = T[row.key].toFixed(decimals(row.step));
         out.classList.toggle('changed', T[row.key] !== DEFAULTS[row.key]);
         save();
+        on.change?.(row.key);
       });
     }
     drawer.append(det);

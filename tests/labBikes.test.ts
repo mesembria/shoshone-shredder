@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { applyBike, BIKE_RIDE, LAB_BIKES, LAB_ORDER, nextBike, RIDE_KEYS, type LabBikeId } from '../src/lab/bikes';
+import { applyBike, withLabRear, BIKE_RIDE, LAB_BIKES, LAB_ORDER, nextBike, RIDE_KEYS, type LabBikeId } from '../src/lab/bikes';
 import { BIKES, kitOf } from '../src/rules/bikes';
 import { DEFAULTS, type TuneKey } from '../src/lab/tune';
 
@@ -119,5 +119,15 @@ describe('hardtail', () => {
     expect(LAB_BIKES.hardtail.frameColor).toBe(0x7d8a96);
     expect(LAB_BIKES.hardtail.wheelRadius).toBeGreaterThan(LAB_BIKES.dirtjumper.wheelRadius);
     expect(LAB_BIKES.hardtail.wheelRadius).toBeLessThan(LAB_BIKES.bolinas.wheelRadius);
+  });
+
+  it('the Tune drawer can switch the Enduro to each rear design, and leaves other bikes alone', () => {
+    const before = JSON.stringify(LAB_BIKES.enduro);
+    expect(withLabRear(LAB_BIKES.enduro, 0)).toBe(LAB_BIKES.enduro);
+    expect(withLabRear(LAB_BIKES.enduro, 1).kit!.rear.design).toBe('singlePivot');
+    expect(withLabRear(LAB_BIKES.enduro, 2).kit!.rear.design).toBe('linkage');
+    expect(withLabRear(LAB_BIKES.enduro, 3).kit!.rear).toEqual({ design: 'shortLink', shock: 'air', travel: 170 });
+    expect(withLabRear(LAB_BIKES.bolinas, 2)).toBe(LAB_BIKES.bolinas);
+    expect(JSON.stringify(LAB_BIKES.enduro)).toBe(before);
   });
 });

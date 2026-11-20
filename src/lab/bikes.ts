@@ -2,7 +2,7 @@
 // as the Bolinas; the old prototype still has it in BIKES). A bike type is a set of overrides on the Tune settings, so
 // the two new ones feel like different machines: the dirt jumper pops, spins and snaps round but is awful downhill;
 // the enduro is the reverse.
-import { BIKES, DEFAULT_KIT, type BikeSpec } from '../rules/bikes';
+import { BIKES, DEFAULT_KIT, withKit, type BikeSpec, type RearDesign } from '../rules/bikes';
 import { DEFAULTS, T, type TuneKey } from './tune';
 
 export type LabBikeId = 'hardtail' | 'dirtjumper' | 'enduro' | 'bolinas';
@@ -53,4 +53,13 @@ export function applyBike(id: LabBikeId, t: Record<TuneKey, number> = T): void {
 
 export function nextBike(id: LabBikeId): LabBikeId {
   return LAB_ORDER[(LAB_ORDER.indexOf(id) + 1) % LAB_ORDER.length];
+}
+
+// The Tune drawer's rear-design switch (T.labRear): 0 keeps the bike's own; 1-3 try another design on a bike that has
+// rear suspension, so all three can be seen and ridden without a new bike. A hardtail stays a hardtail.
+const LAB_REARS: RearDesign[] = ['singlePivot', 'linkage', 'shortLink'];
+export function withLabRear(spec: BikeSpec, n: number): BikeSpec {
+  const design = LAB_REARS[Math.round(n) - 1];
+  if (!design || !spec.kit || spec.kit.rear.design === 'hardtail') return spec;
+  return { ...spec, kit: withKit(spec.kit, { rear: { design } }) };
 }

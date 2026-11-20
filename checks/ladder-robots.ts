@@ -8,6 +8,8 @@
 // Matching bike: Bolinas for Trail, Enduro for Downhill, Dirt Jumper for Park.
 // ONLY=goatUp,tableSmall picks challenges; GROUP=trail|downhill|park a group; LOAD=a,b picks loadouts;
 // BOOST=3 BOOSTTIME=0.6 try another downhill boost; VERBOSE=1 prints every ride.
+// LANDLOG=<dir> appends every ride, with each landing's impact and slope, to <dir>/<challenges>.jsonl, for tuning
+// landing rules from one run (summarise it with checks/landing-log.ts).
 // The hill's challenges (Goat Ladder, Hairpin Hollow, Boulder Dash) ride on Shredder Hills: the lines are planned along
 // each curved trail (sideways offsets from its centreline). Each trail challenge also gets the edge rider (rows e·a, e·b,
 // e·d): it rides beside the trail, off = ±(width/2 + 1.0), wherever a rock, ledge, gravel or log is within 3 m ahead,
@@ -15,6 +17,7 @@
 // the edge).
 // The park's challenges (Table Row, Whoop-de-Doo, the Pump House, Cone Zone, the Plank) ride on Mesa Jump Park. Each
 // challenge is ridden in the place its spot is in.
+import { appendFileSync, mkdirSync } from 'node:fs';
 const P = new URL('../src', import.meta.url).pathname;
 const THREE = await import('three');
 const { buildPlace, placeOfStation } = await import(`${P}/world/places/index.ts`);
@@ -435,7 +438,19 @@ function planTrick(B: number): 'down' | 'left' | 'up' | null {
   }
   return pick;
 }
+const LANDLOG = process.env.LANDLOG;
+let landings: { impact: number; slope: number; outcome: string; airTime: number; fromLip: boolean }[] = [];
 function ride(l: any, def: any, path: Pt[], sty: Style, fit: string): Result {
+  landings = [];
+  const r = rideOnce(l, def, path, sty, fit);
+  if (LANDLOG) {
+    mkdirSync(LANDLOG, { recursive: true });
+    const rec = { challenge: def.id, bike: l.bike, fit, style: sty.name, kit: l.spec.kit ?? null, ok: r.ok, stars: r.stars, t: r.t, points: r.points, landings };
+    appendFileSync(`${LANDLOG}/${process.env.ONLY ?? process.env.GROUP ?? 'all'}.jsonl`, JSON.stringify(rec) + '\n');
+  }
+  return r;
+}
+function rideOnce(l: any, def: any, path: Pt[], sty: Style, fit: string): Result {
   [course, phys] = placeOfStation(def.spot) === 'mesaJumpPark' ? [parkCourse, parkPhys] : [hillCourse, hillPhys];
   C = course.climb;
   Object.assign(T, DEFAULTS);
@@ -518,6 +533,7 @@ function ride(l: any, def: any, path: Pt[], sty: Style, fit: string): Result {
       gapHopped = true;
     }
     const ev = stepLab(s, { steer, throttle, hop, swipe, again: false, crouch, ...here }, DT, phys, course.lines);
+    if (LANDLOG && ev.landed) landings.push({ impact: ev.impact ?? 0, slope: ev.slope ?? 0, outcome: ev.landed, airTime: ev.airTime ?? 0, fromLip: airFromLip });
     if (plants.update(DT, s.pos) && !s.crash) s.speed *= 0.92; // a plant bumped (the old park's bushes, the hill's clumps), as ride.ts does
     // what main.ts sends the challenge each step
     if (!s.grounded && s.air) airFromLip = s.air.line !== null;

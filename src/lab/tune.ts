@@ -22,6 +22,8 @@ export const DEFAULTS = {
   energyCost: 1, gearTop: 0, gearBog: 0, wobbleSpeed: 0, wobbleKick: 0, wobbleGain: 1.5, wobbleLimit: 1, popSoak: 0, plowSize: 0, trickBoost: 0, trickBoostTime: 0.6,
   // walls
   wallCrash: 8, wallBig: 11, rockCrash: 5, bonkCos: 0.92, slideEase: 8,
+  // suspension, the look (src/bike/springs.ts): spring feel, how far each thing moves it, how much squash the rider keeps
+  suspStiff: 160, suspDamp: 14, suspLand: 1, suspChatter: 1, suspPump: 1, suspDive: 1, suspManual: 1, suspScale: 1, squashShare: 0.4,
   // camera and speed cues
   camBack: 4.6, camUp: 2.0, camAhead: 4, camYaw: 5, fovBase: 52, fovFast: 74, shake: 0.04, speedLines: 1,
 };
@@ -132,6 +134,17 @@ const GROUPS: { name: string; rows: Row[] }[] = [
     { key: 'wallBig', label: 'Big crash above (m/s into wall)', min: 6, max: 25, step: 0.5 },
     { key: 'bonkCos', label: 'Head-on bonk (1 = only dead straight)', min: 0.6, max: 1, step: 0.01 },
     { key: 'slideEase', label: 'Turn along a wall you scrape', min: 1, max: 30, step: 1 },
+  ] },
+  { name: 'Suspension', rows: [
+    { key: 'suspStiff', label: 'Look: spring stiffness', min: 40, max: 400, step: 5 },
+    { key: 'suspDamp', label: 'Look: spring damping', min: 2, max: 40, step: 0.5 },
+    { key: 'suspLand', label: 'Look: landings squish it', min: 0, max: 2, step: 0.05 },
+    { key: 'suspChatter', label: 'Look: rough ground chatter', min: 0, max: 3, step: 0.05 },
+    { key: 'suspPump', label: 'Look: pumping squish', min: 0, max: 2, step: 0.05 },
+    { key: 'suspDive', label: 'Look: fork dives when braking', min: 0, max: 2, step: 0.05 },
+    { key: 'suspManual', label: 'Look: manual stretches the fork', min: 0, max: 2, step: 0.05 },
+    { key: 'suspScale', label: 'Look: drawn travel (1 = 0.8 × real)', min: 0.3, max: 2, step: 0.05 },
+    { key: 'squashShare', label: 'Look: rider squash kept on a long-travel bike', min: 0, max: 1, step: 0.05 },
   ] },
   { name: 'Camera and speed', rows: [
     { key: 'camBack', label: 'Camera distance', min: 2, max: 10, step: 0.1 },

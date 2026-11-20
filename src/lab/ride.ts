@@ -17,7 +17,7 @@ import type { Sound } from '../view/sound';
 import type { Course } from './course';
 import { buildPlace, type PlaceId } from '../world/places';
 import { createScenery } from '../look/scenery';
-import { createLabState, placeBike, resetRide, stepLab, MOVE_INFO, type LabEvents, type LabIntent, type LabState } from './bike';
+import { createLabState, crashBack, placeBike, resetRide, stepLab, MOVE_INFO, type LabEvents, type LabIntent, type LabState } from './bike';
 import { createLabCam } from './camera';
 import { segmentsCross } from '../game/spots';
 import { inZone, inZoneHeading, type Zone, ledgeAhead, ledgeGate } from '../world/trail';
@@ -57,6 +57,8 @@ export interface Ride {
   setBike(spec: BikeSpec): void; // a different bike, right here, at the same speed
   setPaused(p: boolean): void;
   paused(): boolean;
+  // crash here, and get up at `at` (cutting the trail): the tumble starts on the next step, from the speed you had
+  crashBack(at: { pos: THREE.Vector3; yaw: number }): void;
 }
 
 // Left thumb: a stick fixed on the left (stickFixed), or one that starts where the thumb lands. Steering gets an expo curve for fine control near the
@@ -432,5 +434,11 @@ export async function createRide(canvas: HTMLCanvasElement, o: RideOptions): Pro
     s.bike = { ...spec };
   };
 
-  return { s, course, phys, look, pad, hud, controls, teleport, setBike, setPaused: (p) => (paused = p), paused: () => paused };
+  function crashBackHere(at: { pos: THREE.Vector3; yaw: number }): void {
+    if (s.crash) return;
+    crashBack(s, at);
+    fx.burst(s.pos, s.surface);
+    sound.crash(false);
+  }
+  return { s, course, phys, look, pad, hud, controls, teleport, setBike, setPaused: (p) => (paused = p), paused: () => paused, crashBack: crashBackHere };
 }

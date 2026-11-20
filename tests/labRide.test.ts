@@ -2,11 +2,12 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import * as THREE from 'three';
 import { createPhysics, type Physics } from '../src/world/physics';
-import { createLabState, placeBike, stepLab, resetRide, type LabIntent, type LabEvents, type LabState } from '../src/lab/bike';
+import { createLabState, placeBike, stepLab, resetRide, crashBack, type LabIntent, type LabEvents, type LabState } from '../src/lab/bike';
 import { LAB_BIKES, applyBike, type LabBikeId } from '../src/lab/bikes';
 import { T, DEFAULTS } from '../src/lab/tune';
 import { fitsTilted } from '../src/lab/body';
 import { TRICK_INFO } from '../src/rules/tricks';
+import { CRASH } from '../src/rules/crash';
 
 const DT = 1 / 60, RAMP = Math.atan(0.12), RAMP_Z = 40, KICK_Z = -40, KICK_X = 30, ROCK_Z = -80, GRAZE_Z = -110;
 const LIP_X = KICK_X + 2.5 * Math.cos((25 * Math.PI) / 180), LIP_Y = 2.5 * Math.sin((25 * Math.PI) / 180);
@@ -693,5 +694,30 @@ describe('points come from lines over features', () => {
     const r = drop('hardtail', vy);
     expect(r.ev.impact!).toBeGreaterThan(6 * (1 + DEFAULTS.bottomMargin));
     expect(r.ev.landed).toBe('bobble');
+  });
+
+  it('a crash sent back gets up at its spot, facing its way', () => {
+    const s = bikeAt('bolinas', 'flat', 10, 6), spot = new THREE.Vector3(40, 0.02, 3);
+    crashBack(s, { pos: spot, yaw: 1.2 });
+    expect(s.crash?.outcome).toBe('wipeout'); // its cost is the tumble and the get-up (only a big crash brings stars)
+    expect(s.combo.count).toBe(0);
+    let n = 0;
+    while (s.crash && n < 1000) {
+      stepLab(s, intent(), DT, phys, []);
+      n++;
+    }
+    expect(Math.abs(n * DT - CRASH.getUpSeconds)).toBeLessThanOrEqual(DT * 1.5);
+    expect(s.pos.distanceTo(spot)).toBeLessThan(0.1);
+    expect(s.yaw).toBeCloseTo(1.2, 5);
+    expect(s.getUpAt).toBeNull();
+  });
+
+  it('Again during a crash sent back still goes to the respawn', () => {
+    const s = bikeAt('bolinas', 'flat', 10, 6);
+    crashBack(s, { pos: new THREE.Vector3(40, 0.02, 3), yaw: 1.2 });
+    stepLab(s, intent({ again: true }), DT, phys, []);
+    expect(s.crash).toBeNull();
+    expect(s.pos.distanceTo(s.respawn.pos)).toBeLessThan(0.01);
+    expect(s.getUpAt).toBeNull();
   });
 });

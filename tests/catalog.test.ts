@@ -103,6 +103,26 @@ describe('the parts catalog', () => {
     expect(l.tune.wobbleSpeed).toBe(base('enduro', 'wobbleSpeed'));
   });
 
+  it('a fitted part changes the kit, never the bike', () => {
+    const before = JSON.stringify(LAB_BIKES.hardtail.kit);
+    expect(withPart('hardtail', 'hardtail-air-fork').spec.kit!.fork).toEqual({ kind: 'air', travel: 120 });
+    expect(withPart('enduro', 'enduro-4-piston-brakes').spec.kit!.brakeFront).toBe(203);
+    expect(withPart('enduro', 'enduro-coil-shock').spec.kit!.rear).toEqual({ design: 'linkage', shock: 'coil', travel: 170 });
+    for (const b of LAB_ORDER) expect(loadout(b, {}).spec.kit).toEqual(LAB_BIKES[b].kit);
+    expect(JSON.stringify(LAB_BIKES.hardtail.kit)).toBe(before);
+  });
+
+  it('spec text and kit data agree', () => {
+    for (const p of PARTS.filter((x) => x.slot === 'suspension' || x.slot === 'brakes')) {
+      const mm = p.spec.match(/(\d+) mm/);
+      if (!mm) continue;
+      const kit = withPart(p.bike, p.id).spec.kit!;
+      const data = p.slot === 'brakes' ? (typeof kit.brakeFront === 'number' ? kit.brakeFront : kit.brakeRear)
+        : p.bike === 'enduro' ? kit.rear.travel : kit.fork.travel;
+      expect(data, p.id).toBe(Number(mm[1]));
+    }
+  });
+
   it('a color paints the spec\'s frame without touching the bike', () => {
     expect(loadout('hardtail', {}, 0xff0000).spec.frameColor).toBe(0xff0000);
     expect(loadout('hardtail', {}).spec.frameColor).toBe(LAB_BIKES.hardtail.frameColor);

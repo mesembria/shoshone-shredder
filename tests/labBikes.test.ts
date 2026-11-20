@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { applyBike, BIKE_RIDE, LAB_BIKES, LAB_ORDER, nextBike, RIDE_KEYS, type LabBikeId } from '../src/lab/bikes';
-import { BIKES } from '../src/rules/bikes';
+import { BIKES, kitOf } from '../src/rules/bikes';
 import { DEFAULTS, type TuneKey } from '../src/lab/tune';
 
 const t = () => ({ ...DEFAULTS });
@@ -47,8 +47,10 @@ describe('lab bikes', () => {
     expect(seen).toEqual(['hardtail', 'dirtjumper', 'enduro', 'bolinas', 'hardtail']);
   });
 
-  it('keeps the Bolinas look as it is', () => {
-    expect(LAB_BIKES.bolinas).toBe(BIKES.bolinas);
+  it('keeps the Bolinas frame and ride as they are, now with its fork and brakes drawn', () => {
+    const { kit, ...rest } = LAB_BIKES.bolinas;
+    expect(rest).toEqual(BIKES.bolinas);
+    expect(kit!.fork).toEqual({ kind: 'air', travel: 130 });
   });
 
   it('makes the Bolinas the climber', () => {
@@ -113,7 +115,7 @@ describe('hardtail', () => {
   it('is the starter bike, a plain hardtail', () => {
     expect(LAB_ORDER[0]).toBe('hardtail');
     expect(LAB_BIKES.hardtail.name).toBe('Hand-me-down Hardtail');
-    expect(LAB_BIKES.hardtail.frame).toMatchObject({ fork: 'plain', shock: false });
+    expect(kitOf(LAB_BIKES.hardtail)).toMatchObject({ fork: { kind: 'rigid' }, rear: { design: 'hardtail' } });
     expect(LAB_BIKES.hardtail.frameColor).toBe(0x7d8a96);
     expect(LAB_BIKES.hardtail.wheelRadius).toBeGreaterThan(LAB_BIKES.dirtjumper.wheelRadius);
     expect(LAB_BIKES.hardtail.wheelRadius).toBeLessThan(LAB_BIKES.bolinas.wheelRadius);

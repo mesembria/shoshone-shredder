@@ -2,7 +2,7 @@
 // as the Bolinas; the old prototype still has it in BIKES). A bike type is a set of overrides on the Tune settings, so
 // the two new ones feel like different machines: the dirt jumper pops, spins and snaps round but is awful downhill;
 // the enduro is the reverse.
-import { BIKES, type BikeSpec } from '../rules/bikes';
+import { BIKES, DEFAULT_KIT, type BikeSpec } from '../rules/bikes';
 import { DEFAULTS, T, type TuneKey } from './tune';
 
 export type LabBikeId = 'hardtail' | 'dirtjumper' | 'enduro' | 'bolinas';
@@ -14,14 +14,18 @@ const trailBasics = { cruise: BIKES.bolinas.cruise, topSpeed: BIKES.bolinas.topS
 export const LAB_BIKES: Record<LabBikeId, BikeSpec> = {
   hardtail: { id: 'hardtail', ...trailBasics, name: 'Hand-me-down Hardtail', frameColor: 0x7d8a96, wheelRadius: 0.32, spin: 0.7, riderScale: SAME_RIDER,
     // a plain, middling frame: no fork travel, no shock
-    frame: { axle: 0.58, bb: [-0.04, 0.33], seat: [-0.27, 0.76], htTop: [0.37, 0.9], htBottom: [0.46, 0.68], bar: [0.42, 1.04], fork: 'plain', shock: false } },
-  bolinas: BIKES.bolinas,
+    frame: { axle: 0.58, bb: [-0.04, 0.33], seat: [-0.27, 0.76], htTop: [0.37, 0.9], htBottom: [0.46, 0.68], bar: [0.42, 1.04] },
+    kit: { ...DEFAULT_KIT, brakeFront: 'rim', brakeRear: 'rim' } },
+  // the phase-0 Bolinas, with its parts drawn: a 130 mm air fork and 180 mm discs
+  bolinas: { ...BIKES.bolinas, kit: { ...DEFAULT_KIT, fork: { kind: 'air', travel: 130 }, brakeFront: 180, brakeRear: 180 } },
   dirtjumper: { id: 'dirtjumper', ...trailBasics, name: 'Orange Dirt Jumper', frameColor: 0xf26b1d, wheelRadius: 0.29, spin: 1.35, riderScale: SAME_RIDER,
     // small, short and low, seat slammed, tall riser bars: the rider stands over it
-    frame: { axle: 0.5, bb: [-0.04, 0.3], seat: [-0.24, 0.56], htTop: [0.33, 0.8], htBottom: [0.4, 0.62], bar: [0.38, 1.0], fork: 'plain', shock: false } },
+    frame: { axle: 0.5, bb: [-0.04, 0.3], seat: [-0.24, 0.56], htTop: [0.33, 0.8], htBottom: [0.4, 0.62], bar: [0.38, 1.0] },
+    kit: { ...DEFAULT_KIT, brakeRear: 160 } }, // rear disc only
   enduro: { id: 'enduro', ...trailBasics, name: 'Teal Enduro', frameColor: 0x1f8a8a, wheelRadius: 0.38, spin: 0.46, riderScale: SAME_RIDER,
     // long and slack, big fork, rear shock, wide bars
-    frame: { axle: 0.68, bb: [-0.04, 0.36], seat: [-0.3, 0.95], htTop: [0.42, 0.98], htBottom: [0.52, 0.74], bar: [0.47, 1.08], barHalf: 0.38, fork: 'travel', shock: true } },
+    frame: { axle: 0.68, bb: [-0.04, 0.36], seat: [-0.3, 0.95], htTop: [0.42, 0.98], htBottom: [0.52, 0.74], bar: [0.47, 1.08], barHalf: 0.38 },
+    kit: { fork: { kind: 'air', travel: 170 }, rear: { design: 'linkage', shock: 'air', travel: 170 }, brakeFront: 180, brakeRear: 180 } },
 };
 
 export const LAB_ORDER: LabBikeId[] = ['hardtail', 'dirtjumper', 'enduro', 'bolinas'];

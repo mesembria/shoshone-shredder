@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import type { BikeSpec, FrameShape } from '../rules/bikes';
+import { kitOf, type BikeSpec, type FrameShape } from '../rules/bikes';
 import type { Tumble } from '../world/physics';
 import type { BikeState } from './controller';
 import { C } from '../look/palette';
@@ -15,7 +15,7 @@ export const RIG_WHEEL = 0.36;
 const UP = new THREE.Vector3(0, 1, 0);
 const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
 export const DEFAULT_FRAME: FrameShape = {
-  axle: 0.58, bb: [-0.04, 0.33], seat: [-0.27, 0.9], htTop: [0.36, 0.92], htBottom: [0.44, 0.72], bar: [0.42, 1.04], barHalf: 0.34, fork: 'plain', shock: false,
+  axle: 0.58, bb: [-0.04, 0.33], seat: [-0.27, 0.9], htTop: [0.36, 0.92], htBottom: [0.44, 0.72], bar: [0.42, 1.04], barHalf: 0.34,
 };
 export const riderScaleOf = (spec: BikeSpec): number => spec.riderScale ?? spec.wheelRadius / RIG_WHEEL;
 // The bike's shape in model units, with its wheel radius (model units too).
@@ -95,7 +95,8 @@ const wrap = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
 export function createRider(bike: BikeSpec, opts: { rider?: boolean } = {}): RiderRig {
-  const f = frameOf(bike), WR = f.wheel, AXLE = f.axle;
+  const f = frameOf(bike), WR = f.wheel, AXLE = f.axle, kit = kitOf(bike);
+  const travelFork = kit.fork.kind !== 'rigid', rearShock = kit.rear.design !== 'hardtail';
   const P = (p: [number, number], z = 0) => V(p[0], p[1], z);
   const BB = P(f.bb), SEAT = P(f.seat), HT_T = P(f.htTop), HT_B = P(f.htBottom), BAR = P(f.bar);
   const root = new THREE.Group();
@@ -123,19 +124,19 @@ export function createRider(bike: BikeSpec, opts: { rider?: boolean } = {}): Rid
   for (const dz of [-0.07, 0.07]) {
     frame.push(rodGeo(V(BB.x, BB.y, dz), V(-AXLE, WR, dz), 0.025), rodGeo(V(SEAT.x + 0.02, SEAT.y - 0.06, dz), V(-AXLE, WR, dz), 0.022));
     const crown = V(HT_B.x, HT_B.y, dz), axle = V(AXLE, WR, dz);
-    if (f.fork === 'travel') {
+    if (travelFork) {
       // fat stanchions down to the lowers, and a brace across the top of the lowers
       const knee = crown.clone().lerp(axle, 0.5);
       fork.push(rodGeo(crown, knee, 0.05), rodGeo(knee, axle, 0.038));
     } else fork.push(rodGeo(crown, axle, 0.035));
   }
-  if (f.fork === 'travel') {
+  if (travelFork) {
     const k = HT_B.clone().lerp(V(AXLE, WR, 0), 0.5);
     fork.push(rodGeo(V(k.x, k.y, -0.08), V(k.x, k.y, 0.08), 0.022));
   }
   const frameMesh = piece(bikePart, frame, bike.frameColor);
   piece(bikePart, fork, 0xc9ccd0);
-  if (f.shock) piece(bikePart, [rodGeo(BB.clone().lerp(SEAT, 0.5), SEAT.clone().lerp(HT_T, 0.35), 0.045)], 0xffc22e);
+  if (rearShock) piece(bikePart, [rodGeo(BB.clone().lerp(SEAT, 0.5), SEAT.clone().lerp(HT_T, 0.35), 0.045)], 0xffc22e);
   piece(bikePart, [rodGeo(HT_T, BAR, 0.03), rodGeo(P(f.bar, -f.barHalf), P(f.bar, f.barHalf), 0.022), roundBox(0.28, 0.07, 0.13, 0.03).translate(SEAT.x - 0.02, SEAT.y + 0.035, 0)], C.black);
   const crank = new THREE.Group();
   crank.position.copy(BB);

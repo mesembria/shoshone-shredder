@@ -441,13 +441,13 @@ export function buildHill(): Course {
     goatUp: { start: gateAcross(up, marks.start, 2), finish: gateAcross(up, marks.top, 2), route: { legs: [{ trail: up, u0: marks.start, u1: marks.top }] } },
     goatDown: { start: gateAcross(down, marks.downStart, half), finish: gateAcross(down, marks.foot, half), route: { legs: [{ trail: down, u0: marks.downStart, u1: marks.foot }] } },
     goatBoth: {
-      start: gateAcross(up, marks.start, 2), via: gateAcross(up, marks.top, 2), finish: gateAcross(down, marks.foot, half),
+      start: gateAcross(up, marks.start, 2), finish: gateAcross(down, marks.foot, half),
       route: { legs: [{ trail: up, u0: marks.start, u1: up.path.length }, { trail: down, u0: 0, u1: marks.foot }], top: marks.top - marks.start },
     },
     hairpinUp: { start: hpBottom, finish: hpTop, route: { legs: [{ trail: hpt, u0: hb, u1: ht }] } },
     hairpinDown: { start: gateAcross(hpt, ht, hh, true), finish: gateAcross(hpt, hb, hh, true), route: { legs: [{ trail: hpt, u0: ht, u1: hb }] } },
     hairpinBoth: {
-      start: hpBottom, via: hpTop, finish: gateAcross(hpt, hb, hh, true),
+      start: hpBottom, finish: gateAcross(hpt, hb, hh, true),
       route: {
         legs: [{ trail: hpt, u0: hb, u1: ht }, { trail: hpt, u0: ht, u1: hb }],
         top: ht - hb,

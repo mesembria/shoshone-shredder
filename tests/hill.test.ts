@@ -43,7 +43,7 @@ describe('the whole Shredder Hills hill', () => {
     }
   });
 
-  it('crosses each run\'s lines forward and in order, riding its trail', () => {
+  it('crosses each run\'s start and finish lines forward and in order, riding its trail', () => {
     // walk a trail's path every 0.2 m, from u0 to u1 (backwards when u1 < u0), and collect the run's events
     const walk = (id: string, legs: [Trail, number, number][]) => {
       const out: string[] = [];
@@ -61,10 +61,10 @@ describe('the whole Shredder Hills hill', () => {
     const up = T.goatUp, down = T.goatDown, hp = T.hairpin, bd = T.boulderDash, L = (t: Trail) => t.path.length;
     expect(walk('goatUp', [[up, 0, L(up)]])).toEqual(['start', 'finish']);
     expect(walk('goatDown', [[down, 0, L(down)]])).toEqual(['start', 'finish']);
-    expect(walk('goatBoth', [[up, 0, L(up)], [down, 0, L(down)]])).toEqual(['start', 'via', 'finish']);
+    expect(walk('goatBoth', [[up, 0, L(up)], [down, 0, L(down)]])).toEqual(['start', 'finish']);
     expect(walk('hairpinUp', [[hp, 0, L(hp)]])).toEqual(['start', 'finish']);
     expect(walk('hairpinDown', [[hp, L(hp), 0]])).toEqual(['start', 'finish']);
-    expect(walk('hairpinBoth', [[hp, 0, L(hp)], [hp, L(hp), 0]])).toEqual(['start', 'via', 'finish']);
+    expect(walk('hairpinBoth', [[hp, 0, L(hp)], [hp, L(hp), 0]])).toEqual(['start', 'finish']);
     expect(walk('boulderDash', [[bd, 0, L(bd)]])).toEqual(['start', 'finish']);
   });
 

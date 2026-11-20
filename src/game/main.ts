@@ -383,10 +383,10 @@ async function start(index: number, sound: Sound, quick: boolean, bikeOverride?:
       case 'run': {
         if (!f.on) return "You didn't cross the start";
         const line = r.course.runs[f.def.id];
-        const to = g.via && !f.checked ? line?.via : line?.finish;
+        const to = line?.finish;
         if (!to) return '';
         const m = Math.round(Math.hypot(s.pos.x - (to.a.x + to.b.x) / 2, s.pos.z - (to.a.y + to.b.y) / 2));
-        return `${m} m from the ${g.via && !f.checked ? 'top' : 'finish'}`;
+        return `${m} m from the finish`;
       }
     }
   }

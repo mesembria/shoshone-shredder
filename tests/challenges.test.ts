@@ -165,12 +165,14 @@ describe('run (start line to finish line)', () => {
     for (const id of ['goatUp', 'goatDown', 'goatBoth', 'hairpinUp', 'hairpinDown', 'hairpinBoth', 'boulderDash']) expect(CHALLENGES.find((c) => c.id === id)!.goal.kind, id).toBe('run');
   });
 
-  it('a both-ways run needs the top before the finish counts', () => {
+  // the route keeps you to the trail (src/game/stayOnTrail.ts), so the top is on the way: it only changes what the
+  // banner says
+  it('a both-ways run says To the top! until the top, then To the finish!', () => {
     const both = def({ kind: 'run', times: [60, 30, 22], via: true });
-    expect(play(both, [{ dt: 1, run: 'start' }, wait(5), { dt: 1, run: 'finish' }])).toMatchObject({ state: 'running', progress: 'To the top!' });
-    expect(play(both, [{ dt: 1, run: 'start' }, { dt: 1, run: 'via' }])).toMatchObject({ state: 'running', progress: 'To the finish!' });
-    expect(play(both, [{ dt: 1, run: 'start' }, wait(5), { dt: 1, run: 'via' }, wait(5), { dt: 1, run: 'finish' }])).toEqual({ state: 'done', stars: 3 });
-    expect(play(both, [{ dt: 1, run: 'via' }, { dt: 1, run: 'start' }, { dt: 1, run: 'finish' }])).toMatchObject({ state: 'running' }); // the top only counts after the start
+    expect(play(both, [{ dt: 1, run: 'start' }, wait(5)])).toMatchObject({ state: 'running', progress: 'To the top!' });
+    expect(play(both, [{ dt: 1, run: 'start' }, wait(5), { dt: 1, top: true }])).toMatchObject({ state: 'running', progress: 'To the finish!' });
+    expect(play(both, [{ dt: 1, run: 'start' }, wait(5), { dt: 1, top: true }, wait(5), { dt: 1, run: 'finish' }])).toEqual({ state: 'done', stars: 3 });
+    expect(play(both, [{ dt: 1, top: true }, { dt: 1, run: 'start' }])).toMatchObject({ state: 'running', progress: 'To the top!' }); // the top only counts after the start
   });
 });
 

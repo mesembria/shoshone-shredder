@@ -67,11 +67,13 @@ function disc(wheel: THREE.Object3D, holder: THREE.Object3D, axle: THREE.Vector3
   cal.userData.rest = at.z;
   return cal;
 }
-// Rim brakes: an arm each side, outside the fork legs or stays, from just below the rim to just above the tire, a pad
-// reaching in to the rim, and the cable across the top over the tire. Braking squeezes them in (scale z).
-function rimArms(holder: THREE.Object3D, axle: THREE.Vector3, along: THREE.Vector3, WR: number, name: string): THREE.Mesh {
-  const at = (d: number, z: number) => V(axle.x + along.x * d, axle.y + along.y * d, z);
-  const rim = WR - 0.07, top = WR + 0.1, Z = 0.12;
+// Rim brakes: an arm on each fork leg or stay (in line with it, just in front of the fork or behind the seatstays), from
+// just below the rim to just above the tire, a pad reaching in to the rim, and the cable across the top over the tire.
+// `out` is +1 to sit ahead of the leg (the fork), -1 behind it (the seatstays). Braking squeezes them in (scale z).
+function rimArms(holder: THREE.Object3D, axle: THREE.Vector3, along: THREE.Vector3, WR: number, out: number, name: string): THREE.Mesh {
+  const off = V(along.y, -along.x, 0).multiplyScalar(0.05 * out); // the leg's radius plus the arm's, sideways from the leg
+  const at = (d: number, z: number) => V(axle.x + along.x * d + off.x, axle.y + along.y * d + off.y, z);
+  const rim = WR - 0.07, top = WR + 0.1, Z = 0.085;
   const geos = [-1, 1].flatMap((side) => [
     rodGeo(at(rim - 0.05, side * Z), at(top, side * Z), 0.016), // the arm
     rodGeo(at(rim, side * Z), at(rim, side * 0.03), 0.022), // the pad, on the rim
@@ -184,7 +186,7 @@ export function buildKit(kit: Kit, f: FrameShape & { wheel: number }, g: KitPart
     if (b === 'none') return;
     const wheel = front ? g.frontWheel : g.rearWheel, holder = front ? frontEnd : rearHolder(), axle = front ? FA : RA;
     const seatstay = new THREE.Vector3().subVectors(SEAT, RA).normalize();
-    if (b === 'rim') clamps.push({ m: rimArms(holder, axle, front ? up : seatstay, WR, front ? 'Front' : 'Rear'), kind: 'rim', front });
+    if (b === 'rim') clamps.push({ m: rimArms(holder, axle, front ? up : seatstay, WR, front ? 1 : -1, front ? 'Front' : 'Rear'), kind: 'rim', front });
     else {
       // front: behind the fork leg (the leg's direction swung back); rear: between the seatstay and the chainstay
       const toward = front ? up.clone().applyAxisAngle(V(0, 0, 1), 0.7) : seatstay.add(new THREE.Vector3().subVectors(BB, RA).normalize()).normalize();

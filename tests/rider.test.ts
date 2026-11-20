@@ -175,6 +175,8 @@ describe('the kit: fork, rear end, shock and brakes', () => {
       const c = hub(rig.root, wheel), d = pts(rig.root, arms).map((p) => Math.hypot(p.x - c.x, p.y - c.y));
       expect(Math.min(...d), `${arms} pads at the rim`).toBeLessThan(WR - 0.06 * sc);
       expect(Math.max(...d), `${arms} not floating above the tire`).toBeLessThan(WR + 0.15 * sc);
+      // on the fork legs or stays (centred at ±0.07, the rigid fork's legs 0.035 thick), not hanging off their sides
+      expect(Math.max(...pts(rig.root, arms).map((p) => Math.abs(p.z))), `${arms} on the legs`).toBeLessThan(0.105 * sc);
     }
   });
 

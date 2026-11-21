@@ -4,7 +4,8 @@
 // Boulder Dash and Hairpin Hollow ride on Shredder Hills, planned and steered along the curved trails; Whoop-de-Doo
 // (rhythm), Jumps XL (xl) and the big and medium flips ride on Mesa Jump Park.
 const P = new URL('../src', import.meta.url).pathname;
-const { createLabState, placeBike, stepLab } = await import(`${P}/lab/bike.ts`);
+const { createLabState, placeBike, stepLab, crashBack } = await import(`${P}/lab/bike.ts`);
+const { startTrack, routeTick } = await import(`${P}/game/stayOnTrail.ts`);
 const { createPhysics, castDown } = await import(`${P}/world/physics.ts`);
 const { LAB_BIKES, applyBike } = await import(`${P}/lab/bikes.ts`);
 const { T, DEFAULTS } = await import(`${P}/lab/tune.ts`);
@@ -111,7 +112,7 @@ function airLeft(s: any): number {
   return 3;
 }
 interface Style { name: string; stick: (s: any, here: { climb: boolean; loose: boolean }) => number; pop?: boolean; popMax?: number; pump?: boolean; trick?: 'up' | 'down' | null; chain?: number; rest?: boolean }
-interface Result { maxWob: number; topAt: number; points: number; lands: string[]; out: string; crashes: number; wobbles: number; burnouts: number; dabs: number; tricks: string[]; short: string[]; top: number; minE: number }
+interface Result { maxWob: number; topAt: number; points: number; lands: string[]; out: string; crashes: number; wobbles: number; burnouts: number; dabs: number; tricks: string[]; short: string[]; top: number; minE: number; cuts: number }
 
 function ride(bike: string, challengeId: string, path: [number, number][], sty: Style, seconds = 120): Result {
   Object.assign(T, DEFAULTS);
@@ -125,7 +126,8 @@ function ride(bike: string, challengeId: string, path: [number, number][], sty: 
   placeBike(s, st.pos.clone(), st.yaw);
   if (st.speed) s.speed = st.speed;
   const run = startRun(def);
-  const r: Result = { maxWob: 0, topAt: 0, points: 0, lands: [], out: 'no result', crashes: 0, wobbles: 0, burnouts: 0, dabs: 0, tricks: [], short: [], top: 0, minE: 1 };
+  const r: Result = { maxWob: 0, topAt: 0, points: 0, lands: [], out: 'no result', crashes: 0, wobbles: 0, burnouts: 0, dabs: 0, tricks: [], short: [], top: 0, minE: 1, cuts: 0 };
+  let track: any = null; // stay on the trail, as main.ts does it
   let idx = 0, held = 0, fromLip = false, resting = false, swiped = 0, prev = { x: s.pos.x, y: s.pos.y, z: s.pos.z, grounded: true };
   for (let n = 0; n < seconds / DT; n++) {
     const x = s.pos.x, z = s.pos.z;
@@ -165,7 +167,23 @@ function ride(bike: string, challengeId: string, path: [number, number][], sty: 
     if (ev.short) r.short.push(ev.short);
     const cur = { x: s.pos.x, y: s.pos.y, z: s.pos.z, grounded: s.grounded };
     const k: any = { dt: DT, ...trickTick(ev.banked, s.combo), landed: ev.landed, airTime: ev.airTime, fromLip: ev.landed ? fromLip : undefined, move: ev.move, left: !inZone(course.zones[def.spot], cur.x, cur.z) };
-    if (def.goal.kind === 'run') k.run = runEvent(def.id, prev, cur, course.runs) ?? undefined;
+    if (def.goal.kind === 'run') {
+      const e = runEvent(def.id, prev, cur, course.runs);
+      if (!track) {
+        if (e === 'start') {
+          track = startTrack(course.runs[def.id].route);
+          k.run = 'start';
+        }
+      } else {
+        const c = routeTick(track, s, prev, e === 'finish');
+        if (c.finish) k.run = 'finish';
+        if (c.top) k.top = true;
+        if (c.cut) {
+          crashBack(s, c.at);
+          r.cuts++;
+        }
+      }
+    }
     prev = cur;
     const res = tick(run, k);
     r.points = run.points; // the challenge's own score (combo totals), as the ride counts it
@@ -173,7 +191,7 @@ function ride(bike: string, challengeId: string, path: [number, number][], sty: 
   }
   return r;
 }
-const fmt = (r: Result) => `${r.out.padEnd(22)} pts ${String(Math.round(r.points)).padStart(4)} crashes ${r.crashes} (wobble ${r.wobbles})  burnt ${r.burnouts}  feet ${r.dabs}  top ${Math.round(r.top * 2.237)} mph  minE ${r.minE.toFixed(2)}${r.tricks.length ? '  tricks ' + r.tricks.join(',') : ''}${r.short.length ? '  short ' + r.short.join(',') : ''}${process.env.DEBUG ? `\n    wobble max ${r.maxWob.toFixed(2)}, top at x ${r.topAt.toFixed(0)}; lands ` + r.lands.join(' ') : ''}`;
+const fmt = (r: Result) => `${r.out.padEnd(22)} pts ${String(Math.round(r.points)).padStart(4)} crashes ${r.crashes} (wobble ${r.wobbles})${r.cuts ? `  CUTS ${r.cuts}` : ''}  burnt ${r.burnouts}  feet ${r.dabs}  top ${Math.round(r.top * 2.237)} mph  minE ${r.minE.toFixed(2)}${r.tricks.length ? '  tricks ' + r.tricks.join(',') : ''}${r.short.length ? '  short ' + r.short.join(',') : ''}${process.env.DEBUG ? `\n    wobble max ${r.maxWob.toFixed(2)}, top at x ${r.topAt.toFixed(0)}; lands ` + r.lands.join(' ') : ''}`;
 
 // near either end of the switchback trail and too quick for a hairpin
 const hairpin = (s: any) => hillHairpinEnd(s) && s.speed > 3.5;

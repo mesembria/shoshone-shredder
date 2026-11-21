@@ -277,11 +277,14 @@ check(await ev(`window.__lab.T.trickBoost === 0 && !window.__game.run() && windo
 await ev(`window.__game.start('hairpinUp')`);
 check(await until(`!!window.__game.run()`, 5000), 'Hairpin Hollow ↑ runs');
 // the line's height: the start is at the bottom, the finish up at the top of the hill (the trail climbs ~10 m)
-const across = (line, at) => ev(`(async () => { const g = window.__lab.course.runs.hairpinUp.${line}, s = window.__lab.s, y = window.__lab.course.stations['${at}'].pos.y;
+const across = (line, at, id = 'hairpinUp') => ev(`(async () => { const g = window.__lab.course.runs.${id}.${line}, s = window.__lab.s, y = window.__lab.course.stations['${at}'].pos.y;
   const mx = (g.a.x + g.b.x) / 2, mz = (g.a.y + g.b.y) / 2, nx = -(g.b.y - g.a.y), nz = g.b.x - g.a.x, n = Math.hypot(nx, nz);
   const put = (d) => { s.pos.set(mx + nx / n * d, y, mz + nz / n * d); s.yaw = Math.atan2(-nx, -nz); s.speed = 0; };
   put(-0.6); await new Promise((r) => setTimeout(r, 150)); put(0.4); await new Promise((r) => setTimeout(r, 150)); })()`);
 await across('start', 'Switchbacks');
+// jumped straight to the top: as if the trail was climbed (the route only lets a finish count from near the end)
+check(await until(`!!window.__game.track()`, 3000), 'Hairpin Hollow ↑: over the start line, on the route');
+await ev(`(() => { const t = window.__game.track(); t.furthest = t.length; })()`);
 await across('finish', 'Switchbacks top');
 check(await until(`window.__game.modal() === 'card'`, 3000), `Hairpin Hollow ↑ finishes (${JSON.stringify(await text('#lab .card'))})`);
 check((await text('#lab .card'))?.includes('Hairpin Hollow ↑'), 'the result card is Hairpin Hollow ↑');
@@ -291,6 +294,34 @@ check(dy < 1, `the bike is up at the top, on the trail (${dy?.toFixed(2)} m from
 await click('#lab .card .close');
 await sleep(1200);
 check(ringD < 5 && await ev(`window.__game.modal() === null`), `after the result, no Hairpin Hollow ↓ card (${ringD?.toFixed(1)} m from its ring; modal ${await ev('window.__game.modal()')}: ${JSON.stringify(await text('#lab .card'))})`);
+
+// ---- cutting the trail on Hairpin Hollow ↓: ride off it and you crash, then get up on it where you'd got to
+await ev(`window.__game.start('hairpinDown')`);
+check(await until(`!!window.__game.run()`, 5000), 'Hairpin Hollow ↓ runs');
+await across('start', 'Switchbacks top', 'hairpinDown');
+check(await until(`!!window.__game.run()?.on && !!window.__game.track()`, 2000), 'over the start line, on the route');
+// 5 m down the route, put the bike 6 m out to the side the trail isn't on, on the ground, facing away, and pedal
+const cutOff = await ev(`(async () => {
+  const { castDown } = await import('/src/world/physics.ts');
+  const l = window.__lab.course.runs.hairpinDown.route.legs[0], p = l.trail.path.at(l.u0 - 5), s = window.__lab.s;
+  for (const side of [1, -1]) {
+    const x = p.x + side * 6 * Math.sin(p.yaw), z = p.z + side * 6 * Math.cos(p.yaw);
+    if (l.trail.path.nearest(x, z).dist < 5.5) continue;
+    const hit = castDown(window.__game.ride.phys, x, s.pos.y + 30, z, 80);
+    if (!hit) continue;
+    s.pos.set(x, hit.height + 0.05, z); s.yaw = p.yaw - side * Math.PI / 2; s.speed = 3; // facing straight away from the trail
+    window.__lab.pad.key('ArrowUp', true, performance.now());
+    return true;
+  }
+  return false; })()`);
+check(cutOff, 'the bike is off the trail beside it');
+check(await until(`!!window.__lab.s.crash`, 30000), 'riding 10 m off the trail crashes');
+await ev(`window.__lab.pad.key('ArrowUp', false, performance.now())`);
+check(/You cut the trail!/.test((await callout()) ?? ''), `and says why (${JSON.stringify(await callout())})`);
+check(await until(`!window.__lab.s.crash`, 6000), 'and gets up');
+const gotUp = await ev(`(() => { const t = window.__game.track(), l = t.route.legs[0], p = l.trail.path.at(l.u0 - t.furthest), s = window.__lab.s; return Math.hypot(s.pos.x - p.x, s.pos.z - p.z); })()`);
+check(gotUp !== undefined && gotUp < 1, `it gets up on the trail where it had got to (${gotUp?.toFixed(2)} m away)`);
+await click('#lab .b-stop');
 
 // ---- back to the jump park by ?at= (a station in the other place), riding the Jump M lane
 await send('Page.navigate', { url: 'http://127.0.0.1:5173/play.html?rider=0&at=Jumps%20M' });

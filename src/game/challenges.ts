@@ -17,7 +17,8 @@ export type Goal =
   | { kind: 'jumps'; count: number; limit: number; points: [number, number, number] }
   | { kind: 'lap'; times: [number, number, number] }
   | { kind: 'plank'; limit: number; points: [number, number, number] }
-  // start line to finish line: time limit, then 2-star and 3-star times; via: the top line must be crossed on the way
+  // start line to finish line: time limit, then 2-star and 3-star times; via: a top to reach first, on its route (the
+  // route keeps you to the trail, so it's on the way: src/game/stayOnTrail.ts)
   | { kind: 'run'; times: [number, number, number]; via?: true };
 // What opens a challenge: stars in its area, a stat the bike reaches (by the right bike or the right part), riding one
 // of some bikes, or clearing other challenges first. hint replaces the made-up lock sentence.
@@ -39,7 +40,8 @@ export interface Tick {
   gate?: number; // a slalom gate ridden through
   lap?: 'start' | 'check'; // crossed the start line, or the far side of the loop
   plank?: 'on' | 'off' | 'end';
-  run?: 'start' | 'via' | 'finish'; // crossed a timed run's start, top (both-ways runs) or finish line
+  run?: 'start' | 'finish'; // crossed a timed run's start or finish line (its route allows the finish)
+  top?: true; // reached the top on a both-ways run's route
   left?: boolean; // rode away from the spot
 }
 // restart: a crash on a Park challenge; the ride takes you back to the start of it
@@ -180,10 +182,9 @@ export function tick(run: Run, k: Tick): Status {
       return run.t > g.times[0] ? { state: 'failed', why: 'Out of time' } : { state: 'running', progress: run.checked ? 'Back to the start!' : 'Round the far turn' };
     case 'run': {
       if (k.run === 'start') run.on = true;
-      if (run.on && k.run === 'via') run.checked = true;
-      const top = !g.via || run.checked;
-      if (run.on && top && k.run === 'finish') return { state: 'done', stars: byTime(run.t, g.times) };
-      return run.t > g.times[0] ? { state: 'failed', why: 'Out of time' } : { state: 'running', progress: !run.on ? 'Go!' : top ? 'To the finish!' : 'To the top!' };
+      if (run.on && k.top) run.checked = true;
+      if (run.on && k.run === 'finish') return { state: 'done', stars: byTime(run.t, g.times) };
+      return run.t > g.times[0] ? { state: 'failed', why: 'Out of time' } : { state: 'running', progress: !run.on ? 'Go!' : g.via && !run.checked ? 'To the top!' : 'To the finish!' };
     }
     case 'plank':
       if (k.plank === 'on') run.on = true;

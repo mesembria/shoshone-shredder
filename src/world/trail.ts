@@ -51,6 +51,17 @@ export class TrailPath {
     return this;
   }
   get length(): number { return this.us[this.us.length - 1]; }
+  // the heading at u, without a new object (for per-step checks)
+  yawAt(u: number): number {
+    const us = this.us, c = Math.max(0, Math.min(this.length, u));
+    let lo = 0, hi = us.length - 1;
+    while (hi - lo > 1) {
+      const mid = (lo + hi) >> 1;
+      if (us[mid] <= c) lo = mid; else hi = mid;
+    }
+    const span = us[hi] - us[lo], t = span > 0 ? (c - us[lo]) / span : 0;
+    return this.yaws[lo] + (this.yaws[hi] - this.yaws[lo]) * t;
+  }
   at(u: number): { x: number; z: number; yaw: number } {
     const us = this.us, c = Math.max(0, Math.min(this.length, u));
     let lo = 0, hi = us.length - 1;
@@ -99,6 +110,49 @@ export class TrailPath {
     this.hitX = x; this.hitZ = z; this.hitValid = true;
     return r;
   }
+  // On the stretch from uA to uB only: each pass of the trail within `reach` of (x, z) (a run of segments in reach; where
+  // the trail doubles back there can be two) offers its closest point, and the pass whose point is closest along the
+  // trail to uNear (where the rider was) wins. Into a shared answer like probe's (good until the next probeNear); dist is
+  // Infinity when nothing is in reach. On the inside of a switchback the next leg can be as near as the rider's own, and
+  // the whole trail's nearest point would jump to it; this answer stays with the rider's own leg.
+  probeNear(x: number, z: number, uA: number, uB: number, reach: number, uNear: number): { u: number; off: number; dist: number } {
+    const { xs, zs, us } = this, r = this.local, n = xs.length - 1;
+    const find = (u: number) => {
+      let lo = 0, hi = n;
+      while (hi - lo > 1) {
+        const mid = (lo + hi) >> 1;
+        if (us[mid] <= u) lo = mid; else hi = mid;
+      }
+      return lo;
+    };
+    const i0 = find(Math.min(uA, uB)), i1 = Math.min(n, find(Math.max(uA, uB)) + 1);
+    let bu = 0, boff = 0, bd = Infinity, bk = Infinity; // the best pass so far
+    let pu = 0, poff = 0, pd = Infinity; // the closest point of the pass under way (pd Infinity: none)
+    const endPass = () => {
+      if (pd < Infinity && Math.abs(pu - uNear) < bk) {
+        bu = pu; boff = poff; bd = pd; bk = Math.abs(pu - uNear);
+      }
+      pd = Infinity;
+    };
+    for (let i = i0; i < i1; i++) {
+      const dx = xs[i + 1] - xs[i], dz = zs[i + 1] - zs[i], len2 = dx * dx + dz * dz;
+      const px = x - xs[i], pz = z - zs[i];
+      const t = len2 > 0 ? Math.max(0, Math.min(1, (px * dx + pz * dz) / len2)) : 0;
+      const dist = Math.hypot(px - t * dx, pz - t * dz);
+      if (dist > reach) {
+        endPass();
+        continue;
+      }
+      if (dist < pd) {
+        const len = Math.sqrt(len2);
+        pu = us[i] + t * (us[i + 1] - us[i]); poff = len > 0 ? (px * -dz + pz * dx) / len : 0; pd = dist;
+      }
+    }
+    endPass();
+    r.u = bu; r.off = boff; r.dist = bd;
+    return r;
+  }
+  private local = { u: 0, off: 0, dist: Infinity };
   private buildBoxes(): void {
     const { xs, zs } = this, n = xs.length - 1, out: number[] = [];
     for (let i0 = 0; i0 < n; i0 += BLOCK) {

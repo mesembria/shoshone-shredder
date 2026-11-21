@@ -63,6 +63,7 @@ export interface LabState extends BikeState {
   told: { energy: boolean }; // one-time hints already shown
   wobble: number; // 0..T.wobbleLimit: the speed wobble building up
   yawRate: number; // last step's steering turn rate, to see the bars swinging
+  getUpAt: { pos: THREE.Vector3; yaw: number } | null; // where this crash gets up, when not where it fell (cutting the trail)
 }
 // In the air: swipe down for a backflip, left or right for a 360 (up is the no-hander).
 export function airMove(swipe: SwipeDir): Move | null {
@@ -86,7 +87,7 @@ export function createLabState(bike: BikeSpec, pos: THREE.Vector3, yaw: number):
   return Object.assign(createBikeState({ ...bike }, pos, yaw), {
     steer: 0, slope: 0, vyGround: 0, skid: 0, pendingPop: null, clock: 0, lipAt: null, air: null, onLine: false, lastJump: null, lastWall: -1, assisting: 0,
     bank: 0, pumped: false, crouchFor: 0, tableDone: false, airPts: 0, boost: 0, boostPush: 0, boostGain: 0, move: null, dab: 0, dabGrace: 0, dabs: 0,
-    energy: 1, burnt: false, burntRest: false, resting: false, told: { energy: false }, wobble: 0, yawRate: 0,
+    energy: 1, burnt: false, burntRest: false, resting: false, told: { energy: false }, wobble: 0, yawRate: 0, getUpAt: null,
   });
 }
 
@@ -112,6 +113,21 @@ function startCrash(s: LabState, outcome: Outcome): void {
   s.winded = Math.max(s.winded, p.winded);
 }
 
+// A crash that gets up somewhere else: on the trail where you'd got to, after cutting it. The same wipeout as any other
+// (its penalties, the tumble from the speed you had), only the get-up spot differs. Again still goes to the respawn.
+export function crashBack(s: LabState, at: { pos: THREE.Vector3; yaw: number }): void {
+  startCrash(s, 'wipeout');
+  s.getUpAt = { pos: at.pos.clone(), yaw: at.yaw };
+}
+
+// A crash cut short (a bike swap mid-crash): stand up now where it would have got up (a cut's spot back on the trail,
+// or where you fell), as tired as you were.
+export function standUpNow(s: LabState): void {
+  const at = s.getUpAt ?? { pos: s.pos, yaw: s.yaw }, { energy, burnt } = s;
+  placeBike(s, at.pos.clone(), at.yaw);
+  Object.assign(s, { energy, burnt });
+}
+
 // A different bike under you: its wobble starts fresh, your legs stay as tired as they were.
 export function resetRide(s: LabState): void {
   s.wobble = 0;
@@ -121,10 +137,12 @@ export function resetRide(s: LabState): void {
 const phaseOf = (s: LabState) => s.clock * 3.1 + s.pos.x * 0.37 + s.pos.z * 0.21;
 
 function getUp(s: LabState, toRespawn: boolean): void {
-  if (toRespawn) {
-    s.pos.copy(s.respawn.pos);
-    s.yaw = s.respawn.yaw;
+  const at = toRespawn ? s.respawn : s.getUpAt;
+  if (at) {
+    s.pos.copy(at.pos);
+    s.yaw = at.yaw;
   }
+  s.getUpAt = null;
   Object.assign(s, {
     crash: null, speed: 0, vy: 0, vyGround: 0, pitch: 0, slope: 0, grounded: true, sinceLip: null, popped: false, trick: null, manual: 0,
     groundedFor: 0, skidding: false, skid: 0, steer: 0, pendingPop: null, air: null, onLine: false, lipAt: null, bank: 0, pumped: false, move: null,

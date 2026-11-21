@@ -8,6 +8,7 @@ import { buildPark, PUMP_TRACK as PT, PLANKS, SLALOM } from '../src/world/places
 import { buildHill } from '../src/world/places/hill';
 import { hairpin } from '../src/world/trails/hairpin';
 import { placeOfStation } from '../src/world/places';
+import { routePoint } from '../src/world/route';
 
 const at = (x: number, z: number, y = 0.1, grounded = true) => ({ x, y, z, grounded });
 const park = buildPark(), hill = buildHill();
@@ -245,7 +246,7 @@ describe('the places', () => {
   };
   const RUNS = CHALLENGES.filter((c) => c.goal.kind === 'run');
 
-  it('sees the start, top and finish lines of every timed run, the right way only', () => {
+  it('sees the start and finish lines of every timed run, the right way only', () => {
     expect(RUNS.length).toBe(7);
     for (const c of RUNS) {
       const r = hill.runs[c.id];
@@ -255,14 +256,7 @@ describe('the places', () => {
       expect(runEvent(c.id, s1, s0, hill.runs), c.id).not.toBe('start');
       const [f0, f1] = across(r.finish);
       expect(runEvent(c.id, f0, f1, hill.runs), c.id).toBe('finish');
-      const goal = c.goal as { via?: boolean };
-      expect(!!r.via, c.id).toBe(!!goal.via);
-      if (r.via) {
-        const [v0, v1] = across(r.via);
-        expect(runEvent(c.id, v0, v1, hill.runs), c.id).toBe('via');
-        expect(runEvent(c.id, v1, v0, hill.runs), c.id).toBeNull();
-      }
-      for (const g of [r.start, r.finish, r.via].filter(Boolean) as Gate[]) {
+      for (const g of [r.start, r.finish]) {
         const zone = hill.zones[c.spot], mx = (g.a.x + g.b.x) / 2, mz = (g.a.y + g.b.y) / 2;
         expect(inZone(zone, mx, mz), `${c.id} line in its zone`).toBe(true);
       }
@@ -284,8 +278,11 @@ describe('the places', () => {
     const r = hill.runs;
     for (const [both, up, down] of [['goatBoth', 'goatUp', 'goatDown'], ['hairpinBoth', 'hairpinUp', 'hairpinDown']]) {
       expect(r[both].start, both).toEqual(r[up].start);
-      expect(r[both].via, both).toEqual(r[up].finish);
       expect(r[both].finish, both).toEqual(r[down].finish);
+      // the top: where the ↑ run finishes, on the route (no top line to cross)
+      const top = r[both].route.top!, f = r[up].finish, p = routePoint(r[both].route, top).pos;
+      expect(top, both).toBeGreaterThan(0);
+      expect(Math.hypot(p.x - (f.a.x + f.b.x) / 2, p.z - (f.a.y + f.b.y) / 2), both).toBeLessThan(0.5);
     }
   });
 });

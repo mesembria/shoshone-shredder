@@ -27,6 +27,12 @@ with station data in `data.ts`) and `src/look/scenery.ts` (a SceneryPlan per pla
   that last pass. Test it with rays down the whole ribbon, not samples.
 - **Seed rock shapes from trail coordinates** (`trailSeed`: trail id, distance along, offset), not world position.
   Otherwise rocks change shape every time a trail moves and ladder times shift for no visible reason.
+- **Every timed run needs a route.** Timed runs follow the rule "Stay on the trail. Cut it and you crash, back
+  where you left it." Each entry in `Course['runs']` carries a `route` (`src/world/route.ts`): the trail stretches
+  it follows, in riding order, from its start line to its finish line. A ↕ run also gets `top`, the route distance
+  of its turnaround. Any turnaround off the route itself, such as a platform or a spur where riders turn round,
+  needs an `also` zone, or turning round there reads as riding off the trail. Run `checks/hairpin-cut.ts` with
+  `RUN=` and `CORNERS=1` on every new run, and check the ladder shows zero cuts by any trail or edge rider.
 - **Wire anything per-area across all places.** The result card announced unlocks only for the current place's
   challenges, but locks count stars from both. Anything that lists challenges, stations or unlocks should loop over
   `AREAS`. Old station keys in bookmarks (`?at=Street`) go through `homeFor`.

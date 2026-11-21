@@ -22,7 +22,8 @@ const P = new URL('../src', import.meta.url).pathname;
 const THREE = await import('three');
 const { buildPlace, placeOfStation } = await import(`${P}/world/places/index.ts`);
 const park = await import(`${P}/world/places/park.ts`);
-const { createLabState, placeBike, stepLab } = await import(`${P}/lab/bike.ts`);
+const { createLabState, placeBike, stepLab, crashBack } = await import(`${P}/lab/bike.ts`);
+const { startTrack, routeTick } = await import(`${P}/game/stayOnTrail.ts`);
 const { createPhysics, castDown } = await import(`${P}/world/physics.ts`);
 const { T, DEFAULTS } = await import(`${P}/lab/tune.ts`);
 const { loadout, applyLoadout, partsFor, stockFitted, SLOTS, PARTS } = await import(`${P}/game/catalog.ts`);
@@ -417,7 +418,7 @@ function airLeft(s: any): number {
 
 // off: this run's bike left the dirt ribbon (its centre more than OFF_TOL m beyond a trail's edge, on the ground)
 const OFF_TOL = 0.05;
-interface Result { off?: boolean; leftBy?: number; ok: boolean; t: number; points: number; stars: number; why: string; style: string; fit: string; most?: number }
+interface Result { off?: boolean; leftBy?: number; ok: boolean; t: number; points: number; stars: number; why: string; style: string; fit: string; most?: number; cuts?: number }
 // The most trick points that fit in one air of `air` seconds on a bike that spins `spin` (a skilled kid's hard limit):
 // a pop, then backflips, 360s and no-handers back to back; the last one may land a little short of round, as a flip can.
 const mostInAir = (air: number, spin: number) => 50 + mostIn((air - 0.05) * spin);
@@ -470,6 +471,7 @@ function rideOnce(l: any, def: any, path: Pt[], sty: Style, fit: string): Result
   PATH = path; IDX = 0; TURN_R = PLANS[def.id].turnR ?? 2;
   let airFromLip = false, wasCrash = false, held = 0, swiped = 0, resting = false, next = 0;
   let prev = { x: s.pos.x, y: s.pos.y, z: s.pos.z, grounded: true };
+  let track: any = null, cuts = 0; // stay on the trail, as main.ts does it
   const hopped = new Set<number>(), airs: number[] = [];
   const ribbons: any[] = Object.values(course.trails ?? {});
   let leftBy = -Infinity; // the furthest the bike got beyond the nearest ribbon's edge, on the ground
@@ -551,7 +553,23 @@ function rideOnce(l: any, def: any, path: Pt[], sty: Style, fit: string): Result
     if (process.env.TRACE && (ev.move || ev.trick || ev.landed || swipe)) console.log(`      t ${run.t.toFixed(2)} x ${s.pos.x.toFixed(1)} ${swipe ? 'swipe ' + swipe : ''} ${ev.move ?? ''} ${ev.trick ?? ''} ${ev.landed ? `landed ${ev.landed} air ${ev.airTime?.toFixed(2)}` : ''} left ${s.air ? airLeft(s).toFixed(2) : '-'}`);
     if (g.kind === 'lap') k.lap = lapEvent(prev, cur, PUMP_TRACK) ?? undefined;
     if (g.kind === 'plank') k.plank = plankWatch(cur) ?? undefined;
-    if (g.kind === 'run') k.run = runEvent(def.id, prev, cur, course.runs) ?? undefined;
+    if (g.kind === 'run') {
+      const e = runEvent(def.id, prev, cur, course.runs);
+      if (!track) {
+        if (e === 'start') {
+          track = startTrack(course.runs[def.id].route);
+          k.run = 'start';
+        }
+      } else {
+        const c = routeTick(track, s, prev, e === 'finish');
+        if (c.finish) k.run = 'finish';
+        if (c.top) k.top = true;
+        if (c.cut) {
+          crashBack(s, c.at);
+          cuts++;
+        }
+      }
+    }
     k.left = !inZone(course.zones[def.spot], cur.x, cur.z);
     if (ribbons.length && s.grounded) leftBy = Math.max(leftBy, Math.min(...ribbons.map((t: any) => t.path.probe(cur.x, cur.z).dist - t.width / 2)));
     let res = tick(run, k);
@@ -560,9 +578,9 @@ function rideOnce(l: any, def: any, path: Pt[], sty: Style, fit: string): Result
     });
     prev = cur;
     // a park run that cleared everything short of the 1-star points still counts as a ride, for its points
-    if (res.state !== 'running') return { off: leftBy > OFF_TOL, leftBy, ok: res.state === 'done' || res.why === 'Not enough tricks!', t: run.t, points: run.points, stars: res.state === 'done' ? res.stars : 0, why: res.state === 'done' ? '' : `${res.why} @${s.pos.x.toFixed(0)},${s.pos.z.toFixed(0)}`, style: sty.name, fit, most: g.kind === 'jumps' && airs.length >= g.count ? airs.slice(0, g.count).reduce((n, a) => n + mostInAir(a, s.bike.spin), 0) : undefined };
+    if (res.state !== 'running') return { off: leftBy > OFF_TOL, leftBy, ok: res.state === 'done' || res.why === 'Not enough tricks!', t: run.t, points: run.points, stars: res.state === 'done' ? res.stars : 0, why: res.state === 'done' ? '' : `${res.why} @${s.pos.x.toFixed(0)},${s.pos.z.toFixed(0)}`, style: sty.name, fit, cuts, most: g.kind === 'jumps' && airs.length >= g.count ? airs.slice(0, g.count).reduce((n, a) => n + mostInAir(a, s.bike.spin), 0) : undefined };
   }
-  return { off: leftBy > OFF_TOL, leftBy, ok: false, t: run.t, points: run.points, stars: 0, why: `no result @${s.pos.x.toFixed(0)},${s.pos.z.toFixed(0)}`, style: sty.name, fit };
+  return { off: leftBy > OFF_TOL, leftBy, ok: false, t: run.t, points: run.points, stars: 0, why: `no result @${s.pos.x.toFixed(0)},${s.pos.z.toFixed(0)}`, style: sty.name, fit, cuts };
 }
 
 // ---- loadouts
@@ -601,6 +619,7 @@ const better = (def: any, a: Result | null, b: Result) => {
   const pts = def.goal.kind === 'jumps' || def.goal.kind === 'plank';
   return (pts ? b.points > a.points : b.t < a.t) ? b : a;
 };
+let cutRuns = 0; // runs with a cut, this challenge
 function bestOf(def: any, bike: string, fits: Record<string, string>[], styles: Style[], paths: Pt[][] = PLANS[def.id].paths): { best: Result | null; runs: number; fails: number; most: number } {
   let best: Result | null = null, runs = 0, fails = 0, most = 0;
   for (const f of fits) {
@@ -610,6 +629,11 @@ function bestOf(def: any, bike: string, fits: Record<string, string>[], styles: 
       const r = ride(l, def, path, sty, short(f));
       runs++;
       if (!r.ok) fails++;
+      // a trail or edge rider should never cut the trail: say so on every run that did
+      if (r.cuts) {
+        cutRuns++;
+        console.log(`    CUT ${bike} ${short(f)} ${sty.name}: cuts ${r.cuts} (${r.ok ? `${r.t.toFixed(2)} s ${r.stars}★` : r.why})`);
+      }
       if (process.env.VERBOSE) console.log(`    ${bike.padEnd(10)} ${short(f).padEnd(28)} ${sty.name.padEnd(40)} ${r.ok ? `${r.t.toFixed(2)} s ${Math.round(r.points)} pts ${r.stars}★${r.leftBy !== undefined && r.leftBy > -Infinity ? ` (${r.leftBy > OFF_TOL ? 'off ribbon by' : 'on ribbon, edge within'} ${Math.abs(r.leftBy).toFixed(2)} m)` : ''}` : r.why}`);
       best = better(def, best, r);
       most = Math.max(most, r.most ?? 0);
@@ -631,6 +655,7 @@ for (const def of CHALLENGES) {
   if (only && !only.includes(def.id)) continue;
   if (group && def.group !== group) continue;
   const plan = PLANS[def.id], m = MATCH[def.group], g = def.goal;
+  cutRuns = 0;
   const careful = plan.styles, careless = plan.styles.filter((x) => x.careless);
   const lock = statOk(def, loadout('hardtail', {})) ? null : lockBuild(def);
   const rows: [string, string, { best: Result | null; runs: number; fails: number; most: number } | null][] = [];
@@ -682,6 +707,7 @@ for (const def of CHALLENGES) {
     }
     const pts = !g.times, sc = (k: string) => score(def, get(k));
     console.log(`  scores: a ${sc('a+') ?? sc('a')}  b ${sc('b')}  c ${sc('c')}  c+ ${sc('c+')}  d ${sc('d')}  (${pts ? 'points, more is better' : 'seconds, less is better'})`);
+    if (g.kind === 'run') console.log(`  cuts: ${cutRuns} runs cut the trail`);
   }
 }
 if (holds.length + breaks.length) console.log(`\nfour-way rule holds on ${holds.length}: ${holds.join(' ')}\nbreaks on ${breaks.length}: ${breaks.join(' ')}`);

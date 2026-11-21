@@ -12,6 +12,7 @@ export interface RouteTrack {
   route: Route;
   furthest: number; // route metres: the furthest point reached
   offRidden: number; // metres ridden since leaving the route
+  offFrom: { x: number; z: number } | null; // where the last stride of that ended
   topped: boolean; // the ↕ runs: the top has been reached
   spot: { pos: THREE.Vector3; yaw: number } | null; // the get-up spot at `furthest`, kept until progress moves
   spotFor: number; // the progress `spot` was worked out for
@@ -21,7 +22,7 @@ export interface RouteTrack {
 export interface RouteCall { finish?: true; top?: true; cut?: true; at?: { pos: THREE.Vector3; yaw: number } }
 
 export function startTrack(route: Route): RouteTrack {
-  return { route, furthest: 0, offRidden: 0, topped: false, spot: null, spotFor: -1, length: routeLength(route), call: {} };
+  return { route, furthest: 0, offRidden: 0, offFrom: null, topped: false, spot: null, spotFor: -1, length: routeLength(route), call: {} };
 }
 
 // On the trail where you'd got to, facing along it.
@@ -32,8 +33,15 @@ function spotOf(t: RouteTrack): { pos: THREE.Vector3; yaw: number } {
   }
   return t.spot;
 }
-function cut(t: RouteTrack, c: RouteCall): RouteCall {
+// riding off the route is counted in strides of this many metres: a bike pinned in a bush, shaking a few mm a step while
+// the rider pushes, never finishes one, so being stuck isn't riding; a ridden line measures the same as step by step
+const STRIDE = 0.25;
+function backOn(t: RouteTrack): void {
   t.offRidden = 0;
+  t.offFrom = null;
+}
+function cut(t: RouteTrack, c: RouteCall): RouteCall {
+  backOn(t);
   c.cut = true;
   c.at = spotOf(t);
   return c;
@@ -56,16 +64,21 @@ export function routeTick(t: RouteTrack, s: LabState, prev: { x: number; z: numb
   if (d !== null) {
     if (d > t.furthest + ROUTE.skip) return cut(t, c);
     t.furthest = Math.max(t.furthest, d);
-    t.offRidden = 0;
+    backOn(t);
     if (t.route.top !== undefined && !t.topped && t.furthest >= t.route.top) {
       t.topped = true;
       c.top = true;
     }
   } else if (t.route.also?.some((z) => inZone(z, s.pos.x, s.pos.z))) {
-    t.offRidden = 0; // off the trail but on ground that counts (Hairpin's turnaround): no progress, no cut
+    backOn(t); // off the trail but on ground that counts (Hairpin's turnaround): no progress, no cut
   } else {
-    const step = Math.hypot(s.pos.x - prev.x, s.pos.z - prev.z);
-    if (step <= ROUTE.jump) t.offRidden += step; // a teleport isn't riding
+    const from = (t.offFrom ??= { x: prev.x, z: prev.z });
+    const stride = Math.hypot(s.pos.x - from.x, s.pos.z - from.z);
+    if (stride >= STRIDE) {
+      if (stride <= ROUTE.jump) t.offRidden += stride; // a teleport isn't riding
+      from.x = s.pos.x;
+      from.z = s.pos.z;
+    }
     if (t.offRidden >= ROUTE.off) return cut(t, c);
   }
   if (finishCrossed) {

@@ -103,6 +103,21 @@ describe('stay on the trail', () => {
     expect(at!.pos.distanceTo(routePoint(r, 30).pos)).toBeLessThan(0.1);
   });
 
+  it('pinned off the trail, jittering in place, is not riding', () => {
+    // a bike stuck in a bush past the grass band shakes a few mm a step while the rider pushes: no cut, however long
+    const r = route('hairpinDown'), m = rider(r), side = clearSide(r, 30, 6);
+    m.jumpTo(30);
+    const leftAt = r.legs[0].trail.width / 2 + ROUTE.lateral;
+    for (let o = STEP; o <= leftAt + 1; o += STEP) {
+      const q = sideways(r, 30, side * o);
+      m.to(q.x, q.z, q.yaw);
+    }
+    const q = sideways(r, 30, side * (leftAt + 1));
+    for (let i = 0; i < 60 * 30; i++) m.to(q.x + (i % 2 ? 0.04 : -0.04), q.z + (i % 3 ? 0.03 : -0.03), q.yaw);
+    expect(m.calls.some((c) => c.cut)).toBe(false);
+    expect(m.t.offRidden).toBeLessThan(2);
+  });
+
   it('coming back more than the skip ahead is a cut', () => {
     const r = route('hairpinDown'), len = routeLength(r);
     // a switchback: two points 15 m apart along the route but only a few metres apart across the grass

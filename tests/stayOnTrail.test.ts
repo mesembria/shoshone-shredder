@@ -189,6 +189,31 @@ describe('stay on the trail', () => {
     expect(m.s.getUpAt).toBeNull();
   });
 
+  it('a tumble that ends on the grass between two legs gets up on the trail where you had got to', () => {
+    // near a switchback the leg below is a few metres away across the grass: getting up there and riding onto it
+    // would be a cut, a second crash for an honest one
+    const r = route('hairpinDown'), len = routeLength(r), hpt = r.legs[0].trail;
+    let d1 = -1;
+    for (let d = 5; d < len - 20 && d1 < 0; d += 0.5) if (routePoint(r, d).pos.distanceTo(routePoint(r, d + 15).pos) < 6) d1 = d;
+    expect(d1).toBeGreaterThan(0);
+    for (const f of [0.4, 0.45, 0.5, 0.55, 0.6]) {
+      const m = rider(r), a = routePoint(r, d1).pos, b = routePoint(r, d1 + 15).pos;
+      const x = b.x + (a.x - b.x) * f, z = b.z + (a.z - b.z) * f;
+      expect(hpt.path.probe(x, z).dist, `between the legs at ${f}`).toBeGreaterThan(hpt.width / 2); // on the grass
+      m.jumpTo(d1);
+      m.s.crash = { outcome: 'wipeout', t: 0 };
+      m.to(x, z, routePoint(r, d1).yaw);
+      expect(m.s.getUpAt, `at ${f}`).not.toBeNull();
+      expect(m.s.getUpAt!.pos.distanceTo(routePoint(r, d1).pos), `at ${f}`).toBeLessThan(0.1);
+    }
+    // a tumble that ends on the dirt, on your own leg, gets up where it ends
+    const m = rider(r);
+    m.jumpTo(30);
+    m.s.crash = { outcome: 'wipeout', t: 0 };
+    m.toRoute(32);
+    expect(m.s.getUpAt).toBeNull();
+  });
+
   it('a teleport is not ridden', () => {
     const r = route('hairpinDown'), m = rider(r), side = clearSide(r, 30, 21);
     m.jumpTo(30);

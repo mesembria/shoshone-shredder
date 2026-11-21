@@ -21,14 +21,15 @@ export function routeLength(r: Route): number {
   return n;
 }
 
-// On the trail at route distance d (clamped to the route), 2 cm up, facing the way it's ridden.
-export function routePoint(r: Route, d: number): { pos: THREE.Vector3; yaw: number } {
+// On the trail at route distance d (clamped to the route), 2 cm up, facing the way it's ridden; and the trail's half
+// width there.
+export function routePoint(r: Route, d: number): { pos: THREE.Vector3; yaw: number; half: number } {
   let left = Math.max(0, Math.min(routeLength(r), d));
   for (let i = 0; i < r.legs.length; i++) {
     const l = r.legs[i], len = legLength(l);
     if (left <= len || i === r.legs.length - 1) {
       const back = l.u1 < l.u0, u = l.u0 + (back ? -1 : 1) * Math.min(left, len);
-      return { pos: trailPoint(l.trail, u, 0, 0.02), yaw: l.trail.path.yawAt(u) + (back ? Math.PI : 0) };
+      return { pos: trailPoint(l.trail, u, 0, 0.02), yaw: l.trail.path.yawAt(u) + (back ? Math.PI : 0), half: l.trail.width / 2 };
     }
     left -= len;
   }

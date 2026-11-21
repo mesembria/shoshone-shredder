@@ -120,6 +120,14 @@ export function crashBack(s: LabState, at: { pos: THREE.Vector3; yaw: number }):
   s.getUpAt = { pos: at.pos.clone(), yaw: at.yaw };
 }
 
+// A crash cut short (a bike swap mid-crash): stand up now where it would have got up (a cut's spot back on the trail,
+// or where you fell), as tired as you were.
+export function standUpNow(s: LabState): void {
+  const at = s.getUpAt ?? { pos: s.pos, yaw: s.yaw }, { energy, burnt } = s;
+  placeBike(s, at.pos.clone(), at.yaw);
+  Object.assign(s, { energy, burnt });
+}
+
 // A different bike under you: its wobble starts fresh, your legs stay as tired as they were.
 export function resetRide(s: LabState): void {
   s.wobble = 0;

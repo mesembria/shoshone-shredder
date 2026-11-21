@@ -2,7 +2,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import * as THREE from 'three';
 import { createPhysics, type Physics } from '../src/world/physics';
-import { createLabState, placeBike, stepLab, resetRide, crashBack, type LabIntent, type LabEvents, type LabState } from '../src/lab/bike';
+import { createLabState, placeBike, stepLab, resetRide, crashBack, standUpNow, type LabIntent, type LabEvents, type LabState } from '../src/lab/bike';
 import { LAB_BIKES, applyBike, type LabBikeId } from '../src/lab/bikes';
 import { T, DEFAULTS } from '../src/lab/tune';
 import { fitsTilted } from '../src/lab/body';
@@ -710,6 +710,23 @@ describe('points come from lines over features', () => {
     expect(s.pos.distanceTo(spot)).toBeLessThan(0.1);
     expect(s.yaw).toBeCloseTo(1.2, 5);
     expect(s.getUpAt).toBeNull();
+  });
+
+  it('a crash cut short (a bike swap) stands up where it would have got up', () => {
+    const s = bikeAt('bolinas', 'flat', 10, 6), spot = new THREE.Vector3(40, 0.02, 3);
+    s.energy = 0.4;
+    crashBack(s, { pos: spot, yaw: 1.2 });
+    standUpNow(s);
+    expect(s.crash).toBeNull();
+    expect(s.pos.distanceTo(spot)).toBeLessThan(0.1);
+    expect(s.yaw).toBeCloseTo(1.2, 5);
+    expect(s.energy).toBe(0.4); // as tired as you were
+    // an ordinary crash: up where you fell
+    const o = bikeAt('bolinas', 'flat', 10, 6), fell = o.pos.clone();
+    o.crash = { outcome: 'wipeout', t: 0 };
+    standUpNow(o);
+    expect(o.crash).toBeNull();
+    expect(o.pos.distanceTo(fell)).toBeLessThan(0.1);
   });
 
   it('Again during a crash sent back still goes to the respawn', () => {

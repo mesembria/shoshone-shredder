@@ -17,7 +17,7 @@ import type { Sound } from '../view/sound';
 import type { Course } from './course';
 import { buildPlace, type PlaceId } from '../world/places';
 import { createScenery } from '../look/scenery';
-import { createLabState, crashBack, placeBike, resetRide, stepLab, MOVE_INFO, type LabEvents, type LabIntent, type LabState } from './bike';
+import { createLabState, crashBack, placeBike, resetRide, standUpNow, stepLab, MOVE_INFO, type LabEvents, type LabIntent, type LabState } from './bike';
 import { createLabCam } from './camera';
 import { segmentsCross } from '../game/spots';
 import { inZone, inZoneHeading, type Zone, ledgeAhead, ledgeGate } from '../world/trail';
@@ -418,12 +418,7 @@ export async function createRide(canvas: HTMLCanvasElement, o: RideOptions): Pro
 
   const setBike = (spec: BikeSpec) => {
     clearTumble();
-    if (s.crash) {
-      // swapped mid-crash: get up on the new bike where you fell, as tired as you were
-      const { energy, burnt } = s;
-      placeBike(s, s.pos.clone(), s.yaw);
-      Object.assign(s, { energy, burnt });
-    }
+    if (s.crash) standUpNow(s); // swapped mid-crash: get up on the new bike where the crash would have
     resetRide(s);
     look.scene.remove(rig.root);
     rig.root.traverse((m) => {

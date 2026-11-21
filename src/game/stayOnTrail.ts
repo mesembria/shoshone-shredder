@@ -53,10 +53,15 @@ export function routeTick(t: RouteTrack, s: LabState, prev: { x: number; z: numb
   const c = t.call;
   c.finish = c.top = c.cut = c.at = undefined;
   const nearEnd = t.length - t.furthest <= ROUTE.skip;
-  // tumbling: nothing is judged; a tumble that ends off the route, or far ahead on it, gets up where you'd got to
+  // tumbling: nothing is judged; a tumble that ends off the dirt (in the grass band too: near a switchback that can be
+  // within reach of the leg below, and riding onto it would be a cut), or far ahead on the route, gets up where you'd
+  // got to
   if (s.crash) {
     const d = locate(t.route, s.pos.x, s.pos.z, s.yaw, t.furthest);
-    s.getUpAt = d === null || d > t.furthest + ROUTE.skip ? spotOf(t) : null;
+    // on the dirt where the route reads it: beside a switchback, one leg's grass band overlaps the next leg's dirt
+    const p = d === null ? null : routePoint(t.route, d);
+    const onDirt = !!p && Math.hypot(p.pos.x - s.pos.x, p.pos.z - s.pos.z) <= p.half + 0.05;
+    s.getUpAt = !onDirt || d! > t.furthest + ROUTE.skip ? spotOf(t) : null;
     if (finishCrossed && nearEnd) c.finish = true;
     return c;
   }

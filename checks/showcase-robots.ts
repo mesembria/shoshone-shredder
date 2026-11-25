@@ -12,6 +12,7 @@ const { T, DEFAULTS } = await import(`${P}/lab/tune.ts`);
 const { CHALLENGES, DOWNHILL_BOOST, startRun, tick, trickTick } = await import(`${P}/game/challenges.ts`);
 const { runEvent } = await import(`${P}/game/spots.ts`);
 const { inZone, inZoneHeading, trailPoint } = await import(`${P}/world/trail.ts`);
+const { blockedProbe, offsetsAcross, planLine } = await import('./follow.ts');
 const { buildPlace, placeOfStation } = await import(`${P}/world/places/index.ts`);
 const { HAIRPIN } = await import(`${P}/world/trails/hairpin.ts`);
 const park = await import(`${P}/world/places/park.ts`);
@@ -39,38 +40,10 @@ const inside = (a: any, x: number, z: number) => inZone(a, x, z);
 
 // ---- a line round the rocks along a curved trail (u along, offsets to the right: dynamic programming over sideways
 // offsets, as the downhill robots do), the probe stretched along the trail's heading
-const blockedAlong = (x: number, z: number, yaw: number) => {
-  const fx = Math.cos(yaw), fz = -Math.sin(yaw);
-  for (const r of [0, 0.3, 0.5]) for (let k = 0; k < (r ? 8 : 1); k++) {
-    const a = (k / 8) * Math.PI * 2, ca = r * Math.cos(a) * 1.4, sa = r * Math.sin(a), h = castDown(phys, x + ca * fx - sa * fz, 40, z + ca * fz + sa * fx, 60);
-    if (h && (h.surface === 'wall' || h.surface === 'rock')) return true;
-  }
-  return false;
-};
-function planAlong(t: any, u0: number, u1: number, spread = 1.1): [number, number][] {
-  const N = Math.floor((u1 - u0) / 0.25), D: number[] = [];
-  for (let d = -spread; d <= spread + 1e-6; d += 0.1) D.push(d);
-  const cost: number[][] = [], from: number[][] = [];
-  for (let i = 0; i <= N; i++) {
-    const u = u0 + i * 0.25, yaw = t.path.at(u).yaw;
-    cost.push([]); from.push([]);
-    for (let j = 0; j < D.length; j++) {
-      const p = trailPoint(t, u, D[j]), c = (blockedAlong(p.x, p.z, yaw) ? 1e6 : 0) + 0.03 * Math.abs(D[j]);
-      if (i === 0) { cost[0].push(c); from[0].push(-1); continue; }
-      let best = 1e12, bj = -1;
-      for (let k = Math.max(0, j - 1); k <= Math.min(D.length - 1, j + 1); k++) {
-        const v = cost[i - 1][k] + 0.4 * Math.abs(k - j);
-        if (v < best) { best = v; bj = k; }
-      }
-      cost[i].push(best + c); from[i].push(bj);
-    }
-  }
-  let j = 0;
-  for (let k = 0; k < D.length; k++) if (cost[N][k] < cost[N][j]) j = k;
-  const out: [number, number][] = [];
-  for (let i = N; i >= 0; i--) { const p = trailPoint(t, u0 + i * 0.25, D[j]); out.push([p.x, p.z]); j = from[i][j]; }
-  return out.reverse();
-}
+const blockedAlong = blockedProbe(phys, { r1: 1.4, rMax: 0.5, n: 8, from: 40, depth: 60 });
+const planAlong = (t: any, u0: number, u1: number, spread = 1.1): [number, number][] =>
+  planLine(u0, u1, offsetsAcross(spread), (u, d) => { const p = trailPoint(t, u, d); return (blockedAlong(p.x, p.z, t.path.at(u).yaw) ? 1e6 : 0) + 0.03 * Math.abs(d); },
+    (u, d) => { const p = trailPoint(t, u, d); return [p.x, p.z]; }, { window: 1 });
 // Hairpin Hollow down the middle, from leg 1's start to 4 m past the top, with points as the old line had them: a metre
 // apart on the legs and every 15° round the turns
 const hm = (await import(`${P}/world/trails/hairpin.ts`)).hairpin().marks;

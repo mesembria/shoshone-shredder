@@ -29,7 +29,7 @@ const stock = (bike: LabBikeId, slot: Slot, name: string, spec: string, does: st
   ({ id: `${bike}-${slot}-stock`, bike, slot, name, spec, price: 0, stock: true, ride: {}, does });
 
 export const PARTS: PartDef[] = [
-  // Hand-me-down Hardtail: every slot is a tired original, each with one upgrade
+  // Hand-me-down Hardtail: every slot is a tired original, each with an upgrade to buy (tires have two)
   stock('hardtail', 'suspension', 'Rigid fork', 'Steel fork · no travel', 'Rattles on rough ground'),
   { id: 'hardtail-air-fork', bike: 'hardtail', slot: 'suspension', name: 'Air fork', spec: 'Air fork · 120 mm', price: 55, weight: 0.4, headAngle: -1, kit: { fork: { kind: 'air', travel: 120 } },
     ride: { wobbleKick: -0.3, wobbleSpeed: 2, rockCrash: 1.5, minRadius: 0.1, steerResponse: -0.5 }, does: 'Kicks less, wobbles later and takes rock hits better, turns a touch wider' },

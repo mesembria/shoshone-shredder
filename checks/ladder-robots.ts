@@ -1,4 +1,4 @@
-// The ladder check: robot riders on every challenge, on four loadouts, fed through the game's own challenge code (the
+// The ladder check: robot riders on every challenge, on five loadouts (a, b, c, c+ and d, with a+ when a lock needs it), fed through the game's own challenge code (the
 // same ticks main.ts sends, the downhill boost on Downhill runs). Prints each loadout's best result and whether the
 // star targets hold the ladder:
 //   (a) bare hardtail: 1★ (or the cheapest hardtail build that opens the lock), never 2★

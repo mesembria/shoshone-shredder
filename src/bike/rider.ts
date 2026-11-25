@@ -38,6 +38,7 @@ export interface RiderRig {
   followTumble(t: Tumble): void;
   reattach(): void;
   setColor(color: number): void; // repaints the frame only
+  disposeOwn(): void; // frees the frame's own material, if setColor made one (the shared ones stay)
   setRiderVisible(v: boolean): void; // hides the rider's meshes; the bike and anchors stay
   standPose(): void; // the stopped pose at once: one shoe on the floor, the bike leaning onto it
   anchors(): Record<AnchorName, THREE.Object3D>; // markers on the bike's parts, so they follow lean and spin
@@ -339,6 +340,10 @@ export function createRider(bike: BikeSpec, opts: { rider?: boolean } = {}): Rid
         for (const p of [frameMesh, ...kitRig.painted]) p.material = own;
       }
       own.color.set(color);
+    },
+    disposeOwn() {
+      own?.dispose();
+      own = null;
     },
     setRiderVisible(v) {
       rider.visible = v;

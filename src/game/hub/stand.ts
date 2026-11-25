@@ -77,6 +77,7 @@ export function createStand(canvas: HTMLCanvasElement, opts: { onFrame?: () => v
   function dropRig(): void {
     if (!rig) return;
     table.remove(rig.root);
+    rig.disposeOwn(); // the repainted frame's own material
     rig.root.traverse((m) => {
       if (m instanceof THREE.Mesh) m.geometry.dispose(); // not the materials: mat() shares them
     });

@@ -31,6 +31,7 @@ import { toNextStar, newlyOpenAnywhere, openedLine, nextStarStrip, resultStrip, 
 import { signHtml, nameHtml, stripHtml, paintStrip, medalsHtml, starHtml } from './pieces';
 import { LAB_BIKES, LAB_ORDER, RIDE_KEYS, withLabRear, type LabBikeId } from '../lab/bikes';
 import { createPlankWatch, lapEvent, runEvent, type Where } from './spots';
+import { bindPresses } from '../input/press';
 import { metresLeft, routeTick, startTrack, type RouteTrack } from './stayOnTrail';
 import { showWho } from './hub/who';
 import { showGarage } from './hub/garage';
@@ -277,8 +278,7 @@ async function start(index: number, sound: Sound, quick: boolean, bikeOverride?:
     drawRings(); // a stat lock may open or close on this bike
   }
   drawSwapLabel();
-  swapBtn.addEventListener('click', swap);
-  overlay.append(swapBtn);
+  overlay.append(swapBtn); // (pressed with the overlay's other buttons: see ---- buttons)
   window.addEventListener('keydown', (e) => {
     if (e.repeat) return;
     if (e.code === 'KeyT') panel?.toggle();
@@ -537,9 +537,10 @@ async function start(index: number, sound: Sound, quick: boolean, bikeOverride?:
     stopRun();
     location.href = quick ? pageUrl() : pageUrl({ rider: index });
   }
-  overlay.addEventListener('click', (e) => {
-    const el = (e.target as HTMLElement).closest<HTMLElement>('button');
-    if (!el) return;
+  // every button on the overlay, Swap too, presses as its finger lifts, even with a thumb on the stick (a tap then
+  // never makes a click: see input/press.ts)
+  bindPresses(overlay, (el) => {
+    if (el === swapBtn) return swap();
     if (el.classList.contains('m-map')) return toMap();
     if (modal === 'countdown') return;
     const def = CHALLENGES.find((c) => c.id === el.closest<HTMLElement>('[data-c]')?.dataset.c);

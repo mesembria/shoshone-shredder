@@ -4,9 +4,9 @@
 // Every art piece keeps its glyph as text (★ won, ☆ not won, ⚙, ↑ ↓ ↕), drawn transparent over the picture, so screen
 // readers and the checks' innerText still read it.
 import './pieces.css';
+import { esc } from './esc';
 import type { Medal, Strip } from './targets';
 
-const esc = (t: string) => t.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const HILL = { '↑': 'up', '↓': 'down', '↕': 'both' } as const;
 
 // A name (or any line naming challenges, like a lock) with every ↑ ↓ ↕ as its clay hill icon

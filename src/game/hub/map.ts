@@ -4,6 +4,7 @@
 // in three groups with stars, what the next star pays, and Go (or what opens it), then that place's "Just ride" warps.
 // Every way out is a real page load to the ride's URL (see main.ts).
 import './hub.css';
+import { esc } from '../esc';
 import { AREAS, PLACE_NAMES, areaStars, type AreaDef } from '../areas';
 import { CHALLENGES, lockText, type ChallengeDef, type Group } from '../challenges';
 import { starMedals, trickChips, COMBO_TIP } from '../targets';
@@ -25,7 +26,6 @@ export const placeName = (station: string) => PLACE_NAMES[station] ?? station;
 const GROUPS: [Group, string][] = [['trail', 'Trail'], ['downhill', 'Downhill'], ['park', 'Park']];
 const SYMBOL = { green: '●', blue: '■', black: '◆' } as const;
 
-const esc = (t: string) => t.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const pct = (f: number) => `${(f * 100).toFixed(2)}%`;
 export { COG } from '../pieces'; // the cog art (garage, shop and the ride import it from here)
 import { COG } from '../pieces';

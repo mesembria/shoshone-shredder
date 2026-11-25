@@ -1,9 +1,9 @@
 // "Who's riding?": the two riders' names (tap ✎ to rename) and Ride!, which opens that rider's map. Bikes are picked
 // in the Garage now, so there are no bike buttons here.
 import './hub.css';
+import { esc } from '../esc';
 import { exportSave, loadGame, parseSave, saveGame, type Store } from '../progress';
 
-const esc = (t: string) => t.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
 export function showWho(who: HTMLElement, store: Store, ride: (index: number) => void): void {
   let game = loadGame(store);

@@ -14,6 +14,7 @@
 import '../style.css';
 import '../lab/lab.css';
 import './game.css';
+import { esc } from './esc';
 import * as THREE from 'three';
 import { createSound, type Sound } from '../view/sound';
 import { castDown } from '../world/physics';
@@ -50,7 +51,6 @@ const game = loadGame(store);
 const WELCOMED = 'shredder-welcomed-2'; // rider names that have seen the welcome card (kept apart from the save)
 const OLD_WELCOMED = 'shredder-welcomed'; // the old build's list: those riders had a save that was reset, so they get a "fresh start" line
 
-const esc = (t: string) => t.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const isBike = (id: string | null): id is LabBikeId => id !== null && Object.prototype.hasOwnProperty.call(LAB_BIKES, id);
 
 // ---- which mode

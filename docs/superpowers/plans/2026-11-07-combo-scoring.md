@@ -25,7 +25,7 @@
   - The matching bike for Park is the dirt jumper.
 - 3★ is set from the chaining style. On (d), big airs banked jump by jump reach 2★ at most.
 - Anti-goal stop: if the manual-between-jumps robot can't ride a line reliably (it can't pop out of a manual, or only a fluke finishes), stop. Bring the robot table to the user. Don't set 3★ from it.
-- No `.git` in the project. Snapshot with `GIT_DIR=$PWD/.superpowers/sdd-git GIT_WORK_TREE=$PWD git add -A src tests checks docs && GIT_DIR=$PWD/.superpowers/sdd-git GIT_WORK_TREE=$PWD git commit -m "<msg>"`.
+- Git (updated Nov 24): the project is now a real repo. Work on a branch, commit normally (read "snapshot" steps as commits), push, open a PR with `gh pr create`; `main` is protected. The `.superpowers/sdd-git` snapshots mentioned in this document are old history kept for reference.
 - Dev server at `http://127.0.0.1:5173`. Never run a robot sweep and a browser check at the same time.
 
 ## Review Focus

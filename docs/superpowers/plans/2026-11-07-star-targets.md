@@ -17,7 +17,7 @@
 - No help screen, no tutorial.
 - Star glyphs: `★`, `★★`, `★★★`; the separator is ` · ` (space, middle dot, space).
 - Times print as the goal stores them (`String(n)`: `45`, `15.4`, `7.4`); a gap prints with one decimal.
-- No `.git` in the project. Snapshot with `GIT_DIR=$PWD/.superpowers/sdd-git GIT_WORK_TREE=$PWD git add -A src tests checks docs play.html && GIT_DIR=$PWD/.superpowers/sdd-git GIT_WORK_TREE=$PWD git commit -m "<msg>"`.
+- Git (updated Nov 24): the project is now a real repo. Work on a branch, commit normally (read "snapshot" steps as commits), push, open a PR with `gh pr create`; `main` is protected. The `.superpowers/sdd-git` snapshots mentioned in this document are old history kept for reference.
 - Browser checks need the dev server at `http://127.0.0.1:5173` (not localhost). Never run them during a robot sweep.
 
 ## Review Focus

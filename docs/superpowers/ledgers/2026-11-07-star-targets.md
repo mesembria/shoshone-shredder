@@ -1,6 +1,6 @@
 # SDD ledger — plan: docs/superpowers/plans/2026-11-07-star-targets.md
 
-Setup: no .git in the project by design; snapshots via GIT_DIR=.superpowers/sdd-git (user-approved pattern). No worktree.
+Setup (updated Nov 24): real git repo now; work on a branch, commit normally, open a PR with `gh pr create`. Written when there was no `.git`; `.superpowers/sdd-git` snapshots are old history kept for reference.
 Pre-flight: Task 2 consumes all of Task 1 targets.ts exports + comboLine; names match in both Interfaces blocks. No conflict.
 Task 1: complete (commits d698560..e67e6df, tests: npx vitest run →    Duration  43.01s (transform 766ms, setup 0ms, collect 3.96s, tests 45.20s, environment 3ms, prepare 1.67s))
 Task 2: Ruling: the combo line's "= total" is proven by the unit test only, not a browser check — the browser checks fake combos by writing s.combo, which never fires the trick event that redraws the HUD — if wrong: a break in hud.trick wiring goes unseen (that wiring is unchanged).

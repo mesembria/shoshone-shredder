@@ -39,9 +39,7 @@ checks run with `npx vite-node checks/<file>.ts`, browser checks with `node chec
 - Place ids are the area ids: **`shredderHills`** and **`mesaJumpPark`**. The park's name is **"Mesa Jump Park"**.
 - Locks count stars from **both** places. Lock text: **`Ride ${n} ★`**.
 - Both places use the one baked backdrop (`public/backdrop/baked/`). No `?look` flag after Task 11.
-- The project folder is **not** a git repo. Never create `.git`. Snapshot with
-  `GIT_DIR=$PWD/.superpowers/sdd-git GIT_WORK_TREE=$PWD git add -A && GIT_DIR=$PWD/.superpowers/sdd-git GIT_WORK_TREE=$PWD git commit -m "<msg>"`,
-  written below as **SNAPSHOT "<msg>"**.
+- Git (updated Nov 24): the project is now a real repo. Work on a branch, commit normally (read "snapshot" steps as commits), push, open a PR with `gh pr create`; `main` is protected. The `.superpowers/sdd-git` snapshots mentioned in this document are old history kept for reference.
 - Dev server: `http://127.0.0.1:5173` (localhost is another project). Headless browser checks use the Playwright
   Chromium described in the existing `checks/*.mjs`.
 

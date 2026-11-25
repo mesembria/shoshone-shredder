@@ -64,7 +64,7 @@ rocks and other various features." It's also the pattern every later area copies
 - The challenge rule: on the bare hardtail, every unlocked challenge can be cleared at 1★ but not 2★. It holds on 14
   of 15 today (Cone Zone is the known exception). Check it with `checks/ladder-robots.ts`.
 - Scoring model: points come from lines over features. Rerun the hop-chain guard robot styles.
-- The project folder is not a git repo. Snapshots of the build go in the private repo (`GIT_DIR=.superpowers/sdd-git`).
+- Git (updated Nov 24): the project is now a real repo. Work on a branch, commit normally (read "snapshot" steps as commits), push, open a PR with `gh pr create`; `main` is protected. The `.superpowers/sdd-git` snapshots mentioned in this document are old history kept for reference.
 - Pacing is pinned by `tests/pacing.test.ts`. This project shouldn't need to change it (see Locks).
 
 ## Approaches considered

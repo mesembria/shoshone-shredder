@@ -92,7 +92,7 @@ weak spots"). The user asked to fix them before the boys' playtest. Stars should
   descent with step-downs, the plank gap hop). The older robots (`slalom.ts`, `showcase-robots.ts`) and the browser
   checks that drive Cone Zone (`game.mjs`) are updated to match.
 - A full robot sweep is slow; never run it beside a browser check.
-- No `.git` in the project; snapshots go to `.superpowers/sdd-git`.
+- Git (updated Nov 24): the project is now a real repo. Work on a branch, commit normally (read "snapshot" steps as commits), push, open a PR with `gh pr create`; `main` is protected. The `.superpowers/sdd-git` snapshots mentioned in this document are old history kept for reference.
 
 ## Left to the builder
 

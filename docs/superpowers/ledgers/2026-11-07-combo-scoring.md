@@ -1,6 +1,6 @@
 # SDD ledger — plan: docs/superpowers/plans/2026-11-07-combo-scoring.md
 
-Setup: no .git by design; snapshots via GIT_DIR=.superpowers/sdd-git. Native execution (user: "execute it").
+Setup (updated Nov 24): real git repo now; work on a branch, commit normally, open a PR with `gh pr create`. Written when there was no `.git`; `.superpowers/sdd-git` snapshots are old history kept for reference.
 Pre-flight: T2 consumes T1 run.points (same name); T3 consumes T1 robot Tick via trickTick. No conflict.
 Task 1: Ruling: also moved checks/showcase-robots.ts and checks/jump-lanes.ts onto trickTick — they built Ticks with the old points field and would silently score 0 (Review Focus 4) — if wrong: none, they're diagnostics.
 Task 1: Ruling: the hub.mjs "a combo ridden in doesn't count" line is run in Task 3 step 5 with the rest of hub.mjs — its driveLane fake tricks need Task 3's new targets to land 1★ — if wrong: the line's first run is one task late.

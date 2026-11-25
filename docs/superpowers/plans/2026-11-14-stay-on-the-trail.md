@@ -22,7 +22,7 @@ the top.
 - A cut is a real crash: outcome `'wipeout'` (its usual penalties), the tumble, the get-up after `CRASH.getUpSeconds`. The clock keeps running.
 - Tolerances start at lateral `2` m past the trail's half width, `10` m ridden off, and skip `10` m. Tune them only with the robots (Task 6). They live in one exported constant, `ROUTE`, in `src/world/route.ts`.
 - Nothing per physics step may scan a whole trail. Use `TrailPath.probe` (bounding boxes, cached per point) and don't allocate per step, except when a crash starts (`docs/building-an-area.md`, "Speed on the iPad").
-- There is no `.git`. "Commit" steps mean snapshotting into `.superpowers/sdd-git`, the same way earlier plans did. Run checks with `npx vite-node checks/<x>.ts`, tests with `npx vitest run`, and types with `npx tsc --noEmit`.
+- Git: work on a branch and commit normally ("Snapshot" steps below mean a commit; this plan was written when the project had no `.git` and snapshotted into `.superpowers/sdd-git`, now an old history kept for reference). Push and open a PR with `gh pr create`; `main` is protected. Run checks with `npx vite-node checks/<x>.ts`, tests with `npx vitest run`, and types with `npx tsc --noEmit`.
 - Use the dev server at `http://127.0.0.1:5173`, not localhost.
 
 ## Review Focus

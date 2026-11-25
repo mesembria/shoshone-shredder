@@ -20,8 +20,7 @@ starting point to tune). Also read `docs/handoff-2026-11-01.md` for how to run t
 ## Global Constraints
 
 - Dev server at `http://127.0.0.1:5173` (not `localhost`); `npm run dev` if it isn't running.
-- Not a git repo: no commit steps. Before Task 1, snapshot `src tests checks docs play.html lab.html` into the session
-  scratchpad, for the final review's diff.
+- Git (updated Nov 24): the project is now a real repo; work on a branch, commit normally, push, open a PR with `gh pr create`. (Originally written for a project with no `.git`.)
 - `npm run check` and `npm test` pass at the end of every task.
 - Every new rule is a plain number in `DEFAULTS`; a value of 0 turns it off. No logic may branch on a bike id (parts
   will override these numbers later).

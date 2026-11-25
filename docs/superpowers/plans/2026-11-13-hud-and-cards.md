@@ -25,7 +25,7 @@
 - **`/index.html` is untouched.** `src/view/hud.ts` and `src/style.css` don't change, so `/index.html` (which also uses `createHud`) looks as it does today. New placement goes in `game.css`, `lab.css` (under `#lab`), `hub.css` or `pieces.css`.
 - **Art:** WebP in `public/ui/`, each file ≤ 40 KB. Sources and keyed masters move out of `public/` into `art/ui/` so they don't ship.
 - **Check viewport:** 1180×820 (the iPad in landscape).
-- **No `.git` in the project.** Snapshot with `GIT_DIR=$PWD/.superpowers/sdd-git GIT_WORK_TREE=$PWD git add -A src tests checks docs art public play.html && GIT_DIR=$PWD/.superpowers/sdd-git GIT_WORK_TREE=$PWD git commit -m "<msg>"`.
+- Git (updated Nov 24): the project is now a real repo. Work on a branch, commit normally (read "snapshot" steps as commits), push, open a PR with `gh pr create`; `main` is protected. The `.superpowers/sdd-git` snapshots mentioned in this document are old history kept for reference.
 - **Browser checks** need the dev server at `http://127.0.0.1:5173` (not localhost). Never run them during a robot sweep.
 
 ## Review Focus

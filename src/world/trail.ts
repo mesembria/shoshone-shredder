@@ -117,41 +117,47 @@ export class TrailPath {
   // the whole trail's nearest point would jump to it; this answer stays with the rider's own leg.
   probeNear(x: number, z: number, uA: number, uB: number, reach: number, uNear: number): { u: number; off: number; dist: number } {
     const { xs, zs, us } = this, r = this.local, n = xs.length - 1;
-    const find = (u: number) => {
-      let lo = 0, hi = n;
-      while (hi - lo > 1) {
-        const mid = (lo + hi) >> 1;
-        if (us[mid] <= u) lo = mid; else hi = mid;
-      }
-      return lo;
-    };
-    const i0 = find(Math.min(uA, uB)), i1 = Math.min(n, find(Math.max(uA, uB)) + 1);
-    let bu = 0, boff = 0, bd = Infinity, bk = Infinity; // the best pass so far
-    let pu = 0, poff = 0, pd = Infinity; // the closest point of the pass under way (pd Infinity: none)
-    const endPass = () => {
-      if (pd < Infinity && Math.abs(pu - uNear) < bk) {
-        bu = pu; boff = poff; bd = pd; bk = Math.abs(pu - uNear);
-      }
-      pd = Infinity;
-    };
+    const i0 = this.segmentAt(Math.min(uA, uB)), i1 = Math.min(n, this.segmentAt(Math.max(uA, uB)) + 1);
+    const pass = this.pass;
+    pass.bu = 0; pass.boff = 0; pass.bd = Infinity; pass.bk = Infinity; // the best pass so far
+    pass.pu = 0; pass.poff = 0; pass.pd = Infinity; // the closest point of the pass under way (pd Infinity: none)
     for (let i = i0; i < i1; i++) {
       const dx = xs[i + 1] - xs[i], dz = zs[i + 1] - zs[i], len2 = dx * dx + dz * dz;
       const px = x - xs[i], pz = z - zs[i];
       const t = len2 > 0 ? Math.max(0, Math.min(1, (px * dx + pz * dz) / len2)) : 0;
       const dist = Math.hypot(px - t * dx, pz - t * dz);
       if (dist > reach) {
-        endPass();
+        this.endPass(uNear);
         continue;
       }
-      if (dist < pd) {
+      if (dist < pass.pd) {
         const len = Math.sqrt(len2);
-        pu = us[i] + t * (us[i + 1] - us[i]); poff = len > 0 ? (px * -dz + pz * dx) / len : 0; pd = dist;
+        pass.pu = us[i] + t * (us[i + 1] - us[i]); pass.poff = len > 0 ? (px * -dz + pz * dx) / len : 0; pass.pd = dist;
       }
     }
-    endPass();
-    r.u = bu; r.off = boff; r.dist = bd;
+    this.endPass(uNear);
+    r.u = pass.bu; r.off = pass.boff; r.dist = pass.bd;
     return r;
   }
+  // the segment of the trail that u falls in
+  private segmentAt(u: number): number {
+    const us = this.us;
+    let lo = 0, hi = this.xs.length - 1;
+    while (hi - lo > 1) {
+      const mid = (lo + hi) >> 1;
+      if (us[mid] <= u) lo = mid; else hi = mid;
+    }
+    return lo;
+  }
+  // close the pass under way: it becomes the best so far if its point is closer along the trail to uNear
+  private endPass(uNear: number): void {
+    const q = this.pass;
+    if (q.pd < Infinity && Math.abs(q.pu - uNear) < q.bk) {
+      q.bu = q.pu; q.boff = q.poff; q.bd = q.pd; q.bk = Math.abs(q.pu - uNear);
+    }
+    q.pd = Infinity;
+  }
+  private pass = { bu: 0, boff: 0, bd: Infinity, bk: Infinity, pu: 0, poff: 0, pd: Infinity };
   private local = { u: 0, off: 0, dist: Infinity };
   private buildBoxes(): void {
     const { xs, zs } = this, n = xs.length - 1, out: number[] = [];
@@ -171,9 +177,9 @@ export interface Trail { id: string; path: TrailPath; profile: Profile; width: n
 export const trailY = (t: Trail, u: number): number => t.y0 + heightAt(t.profile, u);
 
 // the point u along the trail, off to the right and lift above the surface
-export function trailPoint(t: Trail, u: number, off = 0, lift = 0): THREE.Vector3 {
+export function trailPoint(t: Trail, u: number, off = 0, lift = 0, out?: THREE.Vector3): THREE.Vector3 {
   const p = t.path.at(u);
-  return new THREE.Vector3(p.x + off * Math.sin(p.yaw), trailY(t, u) + lift, p.z + off * Math.cos(p.yaw));
+  return (out ?? new THREE.Vector3()).set(p.x + off * Math.sin(p.yaw), trailY(t, u) + lift, p.z + off * Math.cos(p.yaw));
 }
 
 // The riding surface swept along the path, with skirts down both sides so the edges don't float. Rows sit at every

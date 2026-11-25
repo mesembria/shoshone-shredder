@@ -175,16 +175,18 @@ function neighbor(p: THREE.Object3D, cx: number, zFront: number, facingNorth: bo
   win(g, w / 2 - 5.0, 3.4, 0.0, 1.4, 1.3);
   win(g, w / 2 - 2.6, 0.9, 0.0, 1.8, 1.4);
 }
+// A parked car is solid wherever you can see it: body, cabin, windows and wheels. (Only the body used to collide, so a bike
+// that came down on the hood or roof stood inside the cabin, and one beside the car sat in its wheels.)
 export function car(p: THREE.Object3D, x: number, z: number, ry: number, color: number, pickup: boolean): void {
   const g = new THREE.Group();
   g.position.set(x, 0, z);
   g.rotation.y = ry;
   p.add(g);
   box(g, pickup ? 5.6 : 4.7, 0.8, 2.0, color, 0, 0.4, 0, { r: 0.14, collide: 'wall' });
-  box(g, pickup ? 2.3 : 3.3, 0.85, 1.9, color, pickup ? 0.8 : -0.2, 1.15, 0, { r: 0.16 });
-  box(g, pickup ? 2.1 : 3.1, 0.52, 1.96, 0x37414a, pickup ? 0.85 : -0.2, 1.3, 0, { r: 0.08, kind: 'glass' });
+  box(g, pickup ? 2.3 : 3.3, 0.85, 1.9, color, pickup ? 0.8 : -0.2, 1.15, 0, { r: 0.16, collide: 'wall' });
+  box(g, pickup ? 2.1 : 3.1, 0.52, 1.96, 0x37414a, pickup ? 0.85 : -0.2, 1.3, 0, { r: 0.08, kind: 'glass', collide: 'wall' });
   for (const [dx, dz] of [[1.7, 0.95], [1.7, -0.95], [-1.7, 0.95], [-1.7, -0.95]]) {
-    const w = mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.3, 14), C.tire);
+    const w = mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.3, 14), C.tire, { collide: 'wall' });
     w.rotation.x = Math.PI / 2;
     w.position.set(dx, 0.42, dz);
     g.add(w);

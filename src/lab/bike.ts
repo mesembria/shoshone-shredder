@@ -157,19 +157,23 @@ function getUp(s: LabState, toRespawn: boolean): void {
 // tips into an overlap, and a body pressed a few cm into a rock or clump on both sides (it fits by the slim body, but
 // every full-size sweep is blocked at once). So after every step on the ground (and on getting up) a bike that overlaps
 // anything, or is pressed into an obstacle, stands at the nearest spot round there where it's clear, on open ground,
-// still facing the same way.
+// still facing the same way, tilted as the ground there tilts it. (Not as it was tilted where it got stuck: perched on
+// the curve of a parked car's wheel, that tilt poked the body into the flat ground all round, so no spot was clear.)
 const standTmp = new THREE.Vector3();
 const clear = (phys: Physics, pos: THREE.Vector3, yaw: number, pitch: number) => fitsTilted(phys, pos, yaw, pitch) && !pressedTilted(phys, pos, yaw, pitch);
 function standClear(s: LabState, phys: Physics, pitch = 0): void {
   if (clear(phys, s.pos, s.yaw, pitch)) return;
+  const f = forward(s, fwdTmp);
   for (let r = 0.05; r <= 3; r += 0.05) {
     const n = Math.max(8, Math.ceil((2 * Math.PI * r) / 0.15));
     for (let k = 0; k < n; k++) {
       const a = (k / n) * Math.PI * 2, x = s.pos.x + r * Math.cos(a), z = s.pos.z + r * Math.sin(a);
       const g = castDown(phys, x, s.pos.y + 1.5, z, 4);
       if (!g || g.surface === 'rock' || g.surface === 'wall') continue;
-      if (clear(phys, standTmp.set(x, g.height, z), s.yaw, pitch)) {
+      const tilt = Math.atan2(-(g.normal.x * f.x + g.normal.z * f.z), g.normal.y);
+      if (clear(phys, standTmp.set(x, g.height, z), s.yaw, tilt)) {
         s.pos.copy(standTmp);
+        s.pitch = tilt;
         return;
       }
     }

@@ -10,16 +10,18 @@ import { buyPart, fitPart, loadGame, loadoutOf, paint, PAINTS, rideBike, type Pr
 import { LAB_BIKES, type LabBikeId } from '../../lab/bikes';
 import { COG, pageUrl } from './map';
 import { createStand, type Stand } from './stand';
-import { bar, esc, hex, num, SLOT_NAMES, STATS, writeRider } from './ui';
+import { bar, esc, hex, num, SLOT_NAMES, specOf, STATS, writeRider } from './ui';
 import { bindPresses } from '../../input/press';
 
 const PAINT_NAMES: Record<number, string> = { 0xe63946: 'Red', 0xf26b1d: 'Orange', 0xffd84a: 'Yellow', 0x4cc35a: 'Green', 0x1fb5c8: 'Sky', 0x3a7bd5: 'Blue', 0x8e5bd9: 'Purple', 0xff7eb6: 'Pink' };
+const DOUBLE_TAP = 300; // ms
 type Tab = 'parts' | 'paint' | 'specs';
 
 export function showGarage(hub: HTMLElement, store: Store, index: number): void {
   let me: Profile, bike: LabBikeId, l: Loadout, stand: Stand | null = null;
   let tab: Tab = 'parts', slot: Slot | null = null, pick: string | null = null, riderOn = true;
   const $ = <E extends HTMLElement>(sel: string) => hub.querySelector<E>(sel)!;
+  let shownView = '', boughtAt = 0; // the view the panel last drew; when a part was last bought (a double tap on Buy)
 
   const read = () => {
     me = loadGame(store).riders[index];
@@ -37,6 +39,7 @@ export function showGarage(hub: HTMLElement, store: Store, index: number): void 
   function mount(): void {
     bike = loadGame(store).riders[index].riding;
     read();
+    shownView = '';
     hub.hidden = false;
     hub.innerHTML = `
       <div class="garage">
@@ -92,9 +95,10 @@ export function showGarage(hub: HTMLElement, store: Store, index: number): void 
     const owned = (Object.keys(LAB_BIKES) as LabBikeId[]).filter((b) => me.bikes[b]);
     $('.garage .bikes').innerHTML = `${owned.map((b) => `<button class="bike${b === bike ? ' on' : ''}" data-bike="${b}"><i style="background:${hex(me.bikes[b]!.color)}"></i>${esc(LAB_BIKES[b].name)}</button>`).join('')}
       ${bike === me.riding ? '<span class="riding">✓ You ride this one</span>' : '<button class="ride-this">Ride this one</button>'}`;
-    const panel = $('.garage .panel');
+    const panel = $('.garage .panel'), keep = panel.scrollTop, view = `${bike}/${tab}/${slot ?? ''}`;
     panel.innerHTML = tab === 'parts' ? (slot ? card(slot) : slotList()) : tab === 'paint' ? paintTab() : specsTab();
-    panel.scrollTop = 0;
+    panel.scrollTop = view === shownView ? keep : 0; // a buy, a fit or a color leaves the list where it was
+    shownView = view;
   }
 
   const partOf = (id: string) => partsFor(bike, slot ?? undefined).find((p) => p.id === id)!;
@@ -140,7 +144,7 @@ export function showGarage(hub: HTMLElement, store: Store, index: number): void 
       <div class="opts">${opts.map((p) => `<button class="opt${p === sel ? ' sel' : ''}${owns(p) ? '' : ' shop'}" data-part="${p.id}"><b>${esc(p.name)}</b><small>${tag(p)}</small></button>`).join('')}</div>
       <div class="detail">
         <h3>${esc(sel.name)}</h3>
-        <p class="spec">${esc(sel.spec)}</p>
+        <p class="spec">${esc(specOf(sel.name, sel.spec))}</p>
         <p class="does">${esc(sel.does)}</p>
         <div class="stats">${rows || '<p class="lead">Changes nothing you can see on the bars.</p>'}</div>
         ${action}
@@ -172,7 +176,7 @@ export function showGarage(hub: HTMLElement, store: Store, index: number): void 
       </table>
       <table class="spec-sheet parts">${SLOTS.map((s) => {
         const p = partsFor(bike, s).find((x) => x.id === l.fitted[s])!;
-        return `<tr${p.stock ? '' : ' class="changed"'}><th>${SLOT_NAMES[s]}</th><td><b>${esc(p.name)}</b><small>${esc(p.spec)}</small></td></tr>`;
+        return `<tr${p.stock ? '' : ' class="changed"'}><th>${SLOT_NAMES[s]}</th><td><b>${esc(p.name)}</b><small>${esc(specOf(p.name, p.spec))}</small></td></tr>`;
       }).join('')}</table>
       <div class="statgroups">${STAT_GROUPS.map((g) => `<div class="statgroup"><h3>${g.name}</h3>${g.stats.map((k) => bar(k, st[k])).join('')}</div>`).join('')}</div>
     </div>`;
@@ -216,8 +220,12 @@ export function showGarage(hub: HTMLElement, store: Store, index: number): void 
     else if (c.contains('opt')) pick = btn.dataset.part!;
     else if (c.contains('buy') && pick) {
       const p = partOf(pick);
-      if (write((r) => buyPart(r, p.id))) say(`${esc(p.name)} ${p.name.endsWith('s') ? 'are' : 'is'} on your wall`);
+      if (write((r) => buyPart(r, p.id))) {
+        boughtAt = performance.now();
+        say(`${esc(p.name)} ${p.name.endsWith('s') ? 'are' : 'is'} on your wall`);
+      }
     } else if (c.contains('fit') && pick) {
+      if (performance.now() - boughtAt < DOUBLE_TAP) return; // Put it on takes Buy's place: a double tap on Buy isn't a second choice
       const p = partOf(pick);
       if (write((r) => fitPart(r, p.id))) say(`${esc(p.name)} on!`);
     } else if (c.contains('swatch')) write((r) => paint(r, bike, Number(btn.dataset.color)));

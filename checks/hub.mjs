@@ -362,7 +362,7 @@ check(taps?.length === 2 && /\bbuy\b/.test(taps[0]), `both real taps reached the
 check((await saved0())?.cogs === 200 - STICKY && (await cogsShown())?.includes(`${200 - STICKY} ⚙`), `Buy double-tapped → ${200 - STICKY} ⚙, charged once (${await cogsShown()} / ${(await saved0())?.cogs})`);
 check(cogLog?.length >= 1 && cogLog.every((c) => c === 200 - STICKY), `no save ever charged twice or went negative (cogs at each save: ${JSON.stringify(cogLog)})`);
 check((await saved0())?.bikes.hardtail.parts.filter((x) => x === 'hardtail-sticky-tires').length === 1, 'Sticky tires on the wall once (saved)');
-// the second tap lands on Put it on (Buy's spot after buying), so the tires may already be on
+// the second tap lands on Put it on (Buy's spot after buying) and is ignored: a double tap on Buy only buys
 if ((await saved0())?.bikes.hardtail.fitted.tires !== 'hardtail-sticky-tires') {
   check(await until(`!!document.querySelector('#hub .garage .card .fit')`, 2000), `…with Put it on (${await text('#hub .garage .card')})`);
   await click('#hub .garage .card .fit'); await sleep(200);

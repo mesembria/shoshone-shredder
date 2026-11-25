@@ -9,7 +9,7 @@ import { buyAndRideBike, buyPart, loadGame, loadoutOf, type Profile, type Store 
 import { LAB_BIKES, type LabBikeId } from '../../lab/bikes';
 import { COG, pageUrl } from './map';
 import { createStand, type Stand } from './stand';
-import { bar, esc, hex, num, SLOT_NAMES, STATS, writeRider } from './ui';
+import { bar, esc, hex, num, SLOT_NAMES, specOf, STATS, writeRider } from './ui';
 import { bindPresses } from '../../input/press';
 
 type Tab = 'bikes' | 'parts';
@@ -79,7 +79,7 @@ export function showShop(hub: HTMLElement, store: Store, index: number): void {
     toggle.setAttribute('aria-pressed', String(riderOn));
     // the strip: Bikes steps through the bikes on offer; Parts through the bikes you own
     const strip = tab === 'bikes' ? offered : owned();
-    $('.shop .bikes').innerHTML = strip.map((b) => `<button class="bike${b === onStand() ? ' on' : ''}" data-bike="${b}"><i style="background:${hex(me.bikes[b]?.color ?? LAB_BIKES[b].frameColor)}"></i>${esc(LAB_BIKES[b].name)}</button>`).join('');
+    $('.shop .bikes').innerHTML = strip.map((b) => `<button class="bike${b === onStand() ? ' on' : ''}" data-bike="${b}"><i style="background:${hex(me.bikes[b]?.color ?? LAB_BIKES[b].frameColor)}"></i>${esc(LAB_BIKES[b].name)}${tab === 'bikes' && me.bikes[b] ? ' ✓' : ''}</button>`).join('');
     const panel = $('.shop .panel'), keep = panel.scrollTop;
     panel.innerHTML = tab === 'bikes' ? bikesTab() : partsTab();
     panel.scrollTop = tab === shownTab ? keep : 0; // a tap or a buy leaves the list where it was
@@ -115,7 +115,7 @@ export function showShop(hub: HTMLElement, store: Store, index: number): void {
     const now = statsFor(l), next = statsFor(loadout(b, { ...l.fitted, [p.slot]: p.id }, own.color));
     const rows = STATS.filter((k: Stat) => Math.abs(now[k] - next[k]) >= 0.05).map((k) => bar(k, now[k], next[k])).join('');
     return `<div class="part${b === partsBike ? ' on' : ''}" data-part="${p.id}" data-bike="${b}">
-      <div class="ph"><b>${esc(p.name)}</b><small>${esc(p.spec)}</small></div>
+      <div class="ph"><b>${esc(p.name)}</b><small>${esc(specOf(p.name, p.spec))}</small></div>
       <p class="does">${esc(p.does)}</p>
       ${rows ? `<div class="stats">${rows}</div>` : ''}
       ${action(own.parts.includes(p.id), p.price)}
@@ -180,9 +180,11 @@ export function showShop(hub: HTMLElement, store: Store, index: number): void {
         const p = partsFor(card.dataset.bike as LabBikeId).find((x) => x.id === card.dataset.part)!;
         partsBike = p.bike;
         if (writeRider(store, index, (r) => buyPart(r, p.id))) say('Bought! It\'s in your garage');
+        else say('Can\'t buy that right now');
       } else if (sel) {
         const b = sel;
         if (writeRider(store, index, (r) => buyAndRideBike(r, b))) say('Bought! You\'re riding it now');
+        else say('Can\'t buy that right now');
       }
       read();
     } else return;

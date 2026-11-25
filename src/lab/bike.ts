@@ -491,8 +491,9 @@ function stepAt(s: LabState, phys: Physics, ahead: number) {
   const f = forward(s, fwdTmp);
   return castDown(phys, s.pos.x + f.x * ahead, s.pos.y + PROBE_UP, s.pos.z + f.z * ahead, PROBE_DIST);
 }
-function footDown(s: LabState, ev: LabEvents, why: NonNullable<LabEvents['dab']>): void {
+export function footDown(s: LabState, ev: LabEvents, why: NonNullable<LabEvents['dab']>): void {
   s.dab = T.dabTime;
+  s.boost = s.boostGain = 0; // stopped dead: a landing burst has nothing left to push
   s.dabs++;
   s.speed = 0;
   s.manual = 0;

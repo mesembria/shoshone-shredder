@@ -111,6 +111,7 @@ async function start(index: number, sound: Sound, quick: boolean, bikeOverride?:
   const tuning = params.get('tune') === '1';
   Object.assign(T, DEFAULTS);
   if (tuning) loadTune();
+  T.trickBoost = DEFAULTS.trickBoost; // a run turns this on (and stopRun off); a saved Tune value must not carry into free riding
   applyLoadout(loadoutOf(me));
   // the bike as ridden: with ?tune=1 the drawer can try another rear design on it (T.labRear)
   const rideSpec = () => (tuning ? withLabRear(loadoutOf(me).spec, T.labRear) : loadoutOf(me).spec);

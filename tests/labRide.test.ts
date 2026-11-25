@@ -2,7 +2,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import * as THREE from 'three';
 import { createPhysics, type Physics } from '../src/world/physics';
-import { createLabState, placeBike, stepLab, resetRide, crashBack, standUpNow, type LabIntent, type LabEvents, type LabState } from '../src/lab/bike';
+import { createLabState, footDown, placeBike, stepLab, resetRide, crashBack, standUpNow, type LabIntent, type LabEvents, type LabState } from '../src/lab/bike';
 import { LAB_BIKES, applyBike, type LabBikeId } from '../src/lab/bikes';
 import { T, DEFAULTS } from '../src/lab/tune';
 import { fitsTilted } from '../src/lab/body';
@@ -499,6 +499,16 @@ describe('the trick speed boost', () => {
     };
     expect(peakAfter(0)).toBeLessThanOrEqual(T.sprint + 0.01);
     expect(peakAfter(3)).toBeGreaterThan(T.sprint + 1);
+  });
+
+  it('a foot down ends the burst, so it cannot push on for another tick', () => {
+    const s = bikeAt('dirtjumper', 'flat', 10, 7);
+    s.boost = 0.4;
+    s.boostGain = 2;
+    footDown(s, {}, 'rock');
+    expect(s.speed).toBe(0);
+    expect(s.boost).toBe(0);
+    expect(s.boostGain).toBe(0);
   });
 
   it('trickBoost 0 changes nothing', () => {

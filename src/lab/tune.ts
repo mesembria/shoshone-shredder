@@ -1,6 +1,8 @@
 // Feel lab tuning: every number the lab bike, camera and assists read, live, plus the panel that edits them.
 // Values persist in localStorage so a reload keeps your tuning. "Copy" puts them on the clipboard as JSON.
 
+import { bindPresses } from '../input/press';
+
 export const DEFAULTS = {
   // speed
   cruise: 6, sprint: 11, pedalAccel: 5, brake: 9, slopeG: 9.8, maxSpeed: 16, rolling: 0.15, grassDrag: 0.6, tallGrassDrag: 1.8, airDrag: 0.004, pump: 8,
@@ -270,10 +272,9 @@ export function createPanel(root: HTMLElement, stations: string[], on: { open(op
     toggle.hidden = open;
     on.open(open);
   };
-  toggle.addEventListener('click', () => setOpen(true));
-  drawer.addEventListener('click', (e) => {
-    const b = (e.target as HTMLElement).closest('button');
-    if (!b) return;
+  // presses as the finger lifts, even with a thumb on the stick (see input/press.ts)
+  bindPresses(toggle, () => setOpen(true));
+  bindPresses(drawer, (b) => {
     if (b.dataset.go) {
       on.go(b.dataset.go);
       setOpen(false);

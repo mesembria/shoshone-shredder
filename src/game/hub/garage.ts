@@ -11,6 +11,7 @@ import { LAB_BIKES, type LabBikeId } from '../../lab/bikes';
 import { COG, pageUrl } from './map';
 import { createStand, type Stand } from './stand';
 import { bar, esc, hex, num, SLOT_NAMES, STATS, writeRider } from './ui';
+import { bindPresses } from '../../input/press';
 
 const PAINT_NAMES: Record<number, string> = { 0xe63946: 'Red', 0xf26b1d: 'Orange', 0xffd84a: 'Yellow', 0x4cc35a: 'Green', 0x1fb5c8: 'Sky', 0x3a7bd5: 'Blue', 0x8e5bd9: 'Purple', 0xff7eb6: 'Pink' };
 type Tab = 'parts' | 'paint' | 'specs';
@@ -201,9 +202,9 @@ export function showGarage(hub: HTMLElement, store: Store, index: number): void 
     mount();
   });
 
-  hub.addEventListener('click', (e) => {
-    const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('.garage button');
-    if (!btn || btn.disabled) return;
+  // buttons press as the finger lifts, even with another finger on the glass (see input/press.ts)
+  bindPresses(hub, (btn) => {
+    if (!btn.closest('.garage')) return;
     const c = btn.classList;
     if (c.contains('back')) return leave(pageUrl({ rider: index }));
     if (c.contains('tab')) tab = btn.dataset.tab as Tab;

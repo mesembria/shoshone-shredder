@@ -2,6 +2,7 @@
 // in the Garage now, so there are no bike buttons here.
 import './hub.css';
 import { exportSave, loadGame, parseSave, saveGame, type Store } from '../progress';
+import { bindPresses } from '../../input/press';
 
 const esc = (t: string) => t.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
@@ -46,14 +47,14 @@ export function showWho(who: HTMLElement, store: Store, ride: (index: number) =>
     const text = backup.querySelector('textarea')!;
     const note = backup.querySelector<HTMLElement>('.note')!;
     const say = (t: string) => (note.textContent = t);
-    backup.querySelector('.open')!.addEventListener('click', () => {
+    const open = () => {
       const show = backup.classList.toggle('show');
       if (show) {
         text.value = exportSave(store);
         say('');
       }
-    });
-    backup.querySelector('.copy')!.addEventListener('click', async () => {
+    };
+    const copy = async () => {
       text.value = exportSave(store);
       text.select();
       try {
@@ -62,8 +63,8 @@ export function showWho(who: HTMLElement, store: Store, ride: (index: number) =>
       } catch {
         say('Select all and copy it by hand.'); // clipboard needs https or localhost
       }
-    });
-    backup.querySelector('.restore')!.addEventListener('click', () => {
+    };
+    const restore = () => {
       const g = parseSave(text.value);
       if (!g) return say("That doesn't look like a Shoshone Shredder save. Nothing changed.");
       if (!confirm(`Replace both riders (${g.riders[0].name} and ${g.riders[1].name}) with this save?`)) return;
@@ -71,6 +72,12 @@ export function showWho(who: HTMLElement, store: Store, ride: (index: number) =>
       game = g;
       draw();
       say('Restored.');
+    };
+    // buttons press as the finger lifts, even with another finger on the glass (see input/press.ts)
+    bindPresses(backup, (b) => {
+      if (b.classList.contains('open')) open();
+      else if (b.classList.contains('copy')) void copy();
+      else if (b.classList.contains('restore')) restore();
     });
   }
 
@@ -83,13 +90,12 @@ export function showWho(who: HTMLElement, store: Store, ride: (index: number) =>
     draw();
   });
 
-  who.addEventListener('click', (e) => {
-    const el = e.target as HTMLElement;
+  bindPresses(who, (el) => {
     const card = el.closest<HTMLElement>('.rider');
     if (!card || who.classList.contains('loading')) return;
     const i = Number(card.dataset.i);
-    if (el.closest('.rename')) rename(card, i);
-    else if (el.closest('.go')) {
+    if (el.classList.contains('rename')) rename(card, i);
+    else if (el.classList.contains('go')) {
       who.classList.add('loading'); // one tap: a second one mid-load does nothing
       ride(i);
     }

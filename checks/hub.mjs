@@ -352,10 +352,10 @@ await shot('88-garage-parts');
 // the first one left there. Every save this rider's cogs reach, and what each tap hit, are logged in the page.
 await ev(`(() => { window.__cogLog = []; window.__taps = []; const set = Storage.prototype.setItem;
   Storage.prototype.setItem = function (k, v) { if (k === 'shredder-save') window.__cogLog.push(JSON.parse(v).riders[0].cogs); return set.call(this, k, v); };
-  document.addEventListener('click', (e) => window.__taps.push(e.target.closest('button')?.className ?? e.target.tagName), true); return true; })()`);
+  document.addEventListener('pointerup', (e) => window.__taps.push(e.target.closest('button')?.className ?? e.target.tagName), true); return true; })()`);
 const buyAt = await centre('#hub .garage .card .buy');
 await tapAt(...buyAt); await sleep(80); await tapAt(...buyAt);
-await sleep(300);
+await sleep(800); // (buttons press on a touch's lift now; a click within 700 ms of one is taken for that tap's own)
 const taps = await ev(`window.__taps`), cogLog = await ev(`window.__cogLog`);
 console.log(`(info) the two taps hit: ${JSON.stringify(taps)}; cogs at each save: ${JSON.stringify(cogLog)}`);
 check(taps?.length === 2 && /\bbuy\b/.test(taps[0]), `both real taps reached the page, the first on Buy (${JSON.stringify(taps)})`);
@@ -392,7 +392,7 @@ await click('#hub .garage .card .opt[data-part="hardtail-hydraulic-brakes"]'); a
 check(await ev(`(() => { const b = document.querySelector('#hub .garage .card .buy'); return !!b && b.disabled && b.innerText.includes('Need 1 more ⚙'); })()`), `${BRAKES - 1} cogs for a ${BRAKES} ⚙ part: "Need 1 more ⚙", disabled (${JSON.stringify(await text('#hub .garage .card .buy'))})`);
 const shortAt = await centre('#hub .garage .card .buy');
 await ev(`(window.__cogLog = [], true)`);
-await tapAt(...shortAt); await sleep(80); await tapAt(...shortAt); await sleep(300);
+await tapAt(...shortAt); await sleep(80); await tapAt(...shortAt); await sleep(800);
 const shortSaved = await saved0();
 check(shortSaved?.cogs === BRAKES - 1 && !shortSaved.bikes.hardtail.parts.includes('hardtail-hydraulic-brakes') && (await ev(`window.__cogLog`))?.length === 0, `two taps on the disabled Buy: still ${BRAKES - 1} ⚙, nothing bought, nothing saved (${shortSaved?.cogs}, ${JSON.stringify(await ev('window.__cogLog'))})`);
 // Paint
@@ -469,7 +469,7 @@ check(await ev(`(() => { const b = document.querySelector('#hub .shop .panel .bu
 await shot('92-shop-bikes');
 const shortAt2 = await centre('#hub .shop .panel .buy');
 await ev(`(window.__cogLog = [], Storage.prototype.setItem = (function (set) { return function (k, v) { if (k === 'shredder-save') window.__cogLog.push(JSON.parse(v).riders[0].cogs); return set.call(this, k, v); }; })(Storage.prototype.setItem), true)`);
-await tapAt(...shortAt2); await sleep(80); await tapAt(...shortAt2); await sleep(250);
+await tapAt(...shortAt2); await sleep(80); await tapAt(...shortAt2); await sleep(800);
 check((await saved0())?.cogs === DJ - 1 && !(await saved0())?.bikes.dirtjumper && (await ev(`window.__cogLog`))?.length === 0, `two taps on the disabled Buy: still ${DJ - 1} ⚙, nothing bought, nothing saved`);
 // one more cog arrives (another page wrote it): the Shop re-reads on pageshow, Buy is live, a double tap charges once
 await setSave({ ...(await saved0()), cogs: DJ }, rider('Rider 2', 0));
@@ -477,9 +477,9 @@ await ev(`window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: 
 check(await until(shopOpen, 8000) && (await shopCogs())?.includes(`${DJ} ⚙`), `pageshow redraws the Shop from the save (${await shopCogs()})`);
 await click(bikeBtn('dirtjumper')); await sleep(200);
 check(await ev(`(() => { const b = document.querySelector('#hub .shop .panel .buy'); return !!b && !b.disabled && b.innerText.includes('${DJ}'); })()`), `${DJ} ⚙: Buy is live (${JSON.stringify(await text('#hub .shop .panel .buy'))})`);
-await ev(`(window.__cogLog = [], window.__taps = [], document.addEventListener('click', (e) => window.__taps.push(e.target.closest('button')?.className ?? e.target.tagName), true), true)`);
+await ev(`(window.__cogLog = [], window.__taps = [], document.addEventListener('pointerup', (e) => window.__taps.push(e.target.closest('button')?.className ?? e.target.tagName), true), true)`);
 const djBuyAt = await centre('#hub .shop .panel .buy');
-await tapAt(...djBuyAt); await sleep(80); await tapAt(...djBuyAt); await sleep(300);
+await tapAt(...djBuyAt); await sleep(80); await tapAt(...djBuyAt); await sleep(800);
 const shopTaps = await ev(`window.__taps`), shopLog = await ev(`window.__cogLog`);
 console.log(`(info) the two taps hit: ${JSON.stringify(shopTaps)}; cogs at each save: ${JSON.stringify(shopLog)}`);
 check(shopTaps?.length === 2 && /\bbuy\b/.test(shopTaps[0]), 'both real taps reached the page, the first on Buy');
@@ -513,7 +513,7 @@ await until(shopOpen, 8000); await click('#hub .shop .tab[data-tab="parts"]'); a
 await ev(`(window.__cogLog = [], true)`);
 await ev(`document.querySelector('#hub .shop .part[data-part="dirtjumper-fast-tires"]').scrollIntoView({ block: 'center' })`); await sleep(150);
 const ftBuy = await centre('#hub .shop .part[data-part="dirtjumper-fast-tires"] .buy');
-await tapAt(...ftBuy); await sleep(80); await tapAt(...ftBuy); await sleep(300);
+await tapAt(...ftBuy); await sleep(80); await tapAt(...ftBuy); await sleep(800);
 const afterPart = await saved0();
 check(afterPart?.cogs === 5 && afterPart.bikes.dirtjumper.parts.filter((x) => x === 'dirtjumper-fast-tires').length === 1 && (await ev(`window.__cogLog`)).every((c) => c === 5), `a part double-tapped: ${FAST + 5} → 5 ⚙, owned once (${afterPart?.cogs}, cogs per save ${JSON.stringify(await ev('window.__cogLog'))})`);
 check((await text('#hub .shop .part[data-part="dirtjumper-fast-tires"]'))?.includes('In your garage') && await ev(`!document.querySelector('#hub .shop .part[data-part="dirtjumper-fast-tires"] .buy')`), 'the bought part reads "In your garage"');

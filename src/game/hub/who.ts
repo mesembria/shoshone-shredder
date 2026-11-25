@@ -31,8 +31,11 @@ export function showWho(who: HTMLElement, store: Store, ride: (index: number) =>
       if (done) return;
       done = true;
       const name = input.value.trim();
-      if (name) game.riders[i] = { ...game.riders[i], name };
-      saveGame(store, game);
+      // re-read the save and change only this name: another tab may have saved since this page loaded
+      const now = loadGame(store);
+      if (name) now.riders[i] = { ...now.riders[i], name };
+      saveGame(store, now);
+      game = now;
       draw();
     };
     input.addEventListener('keydown', (e) => e.key === 'Enter' && commit());

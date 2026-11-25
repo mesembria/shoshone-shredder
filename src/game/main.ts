@@ -88,7 +88,14 @@ function ride(index: number, bike?: LabBikeId): void {
   window.addEventListener('pageshow', (e) => {
     if (e.persisted) location.reload();
   });
-  void start(index, sound, !!bike, bike).then(() => who.remove());
+  start(index, sound, !!bike, bike).then(
+    () => who.remove(),
+    (err) => {
+      console.error('The ride failed to start', err);
+      who.className = '';
+      who.innerHTML = '<h1>Shoshone Shredder</h1><p class="loading-note">The ride would not start. Check that this browser can show 3D, then try again.</p><p><a href="' + pageUrl({}) + '">Back</a></p>';
+    },
+  );
 }
 
 // ---- riding

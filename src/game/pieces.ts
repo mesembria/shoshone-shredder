@@ -37,11 +37,21 @@ export function stripHtml(s: Strip): string {
 // star changes. A star passed pops the stars. A fuse run out drops that one gold star: it stays a moment where it was,
 // falling and fading (on the last star, over the empty one left behind), while the stars still held stay put.
 const LOST = '<i class="ui-star won lost">★</i>', LOST_MS = 350;
+// What the strip shows, as one string: the bar only has 240 px, so fill and open round to 1/240. The same string as
+// last frame means there is nothing to write.
+const q240 = (v: number) => Math.round(v * 240) / 240;
+export const stripKey = (s: Strip): string => `${stripClass(s)}|${s.next}|${s.fill > 0 ? 1 : 0}|${q240(s.fill)}|${q240(s.open)}|${s.have}|${s.target}`;
+// Text and hidden writes that skip when nothing changes (a write restyles the page even if the value is the same)
+export const setText = (el: Element, text: string): void => { if (el.textContent !== text) el.textContent = text; };
+export const setHidden = (el: HTMLElement, hidden: boolean): void => { if (el.hidden !== hidden) el.hidden = hidden; };
 export function paintStrip(el: HTMLElement, s: Strip): void {
+  const key = stripKey(s);
+  if (el.dataset.key === key) return;
+  el.dataset.key = key;
   const before = Number(el.dataset.next), wasFull = el.classList.contains('full');
   el.className = stripClass(s);
-  el.style.setProperty('--fill', n3(s.fill));
-  el.style.setProperty('--open', n3(s.open));
+  el.style.setProperty('--fill', n3(q240(s.fill)));
+  el.style.setProperty('--open', n3(q240(s.open)));
   el.querySelector('.have')!.textContent = s.have;
   el.querySelector('.target')!.textContent = s.target;
   const wasGold = !!el.querySelector('.next .ui-star.won:not(.lost)'), gold = (s.kind === 'time' && s.fill > 0) || s.full;
@@ -65,6 +75,6 @@ export function paintStrip(el: HTMLElement, s: Strip): void {
 // ---- the three star medals: the stars for that tier, what it needs, and what it pays or "✓ won"
 export function medalsHtml(medals: Medal[]): string {
   return `<div class="ui-medals">${medals
-    .map((m, i) => `<div class="ui-medal${m.won ? ' won' : ''}"><span class="s">${starHtml(m.won).repeat(i + 1)}</span><span class="tgt">${m.target}</span><span class="pay">${m.won ? '✓ won' : m.pays !== null ? `+${m.pays} ${COG}` : ''}</span></div>`)
+    .map((m, i) => `<div class="ui-medal${m.won ? ' won' : ''}"><span class="s">${starHtml(m.won).repeat(i + 1)}</span><span class="tgt">${m.target}</span><span class="ui-pay">${m.won ? '✓ won' : m.pays !== null ? `+${m.pays} ${COG}` : ''}</span></div>`)
     .join('')}</div>`;
 }

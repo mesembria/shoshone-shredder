@@ -28,7 +28,7 @@ import { applyLoadout } from './catalog';
 import { airHints } from './unlocks';
 import { EMPTY_COMBO } from '../rules/tricks';
 import { toNextStar, newlyOpenAnywhere, openedLine, nextStarStrip, resultStrip, goalTag, starMedals } from './targets';
-import { signHtml, nameHtml, stripHtml, paintStrip, medalsHtml, starHtml } from './pieces';
+import { signHtml, nameHtml, stripHtml, paintStrip, setText, setHidden, medalsHtml, starHtml } from './pieces';
 import { LAB_BIKES, LAB_ORDER, RIDE_KEYS, withLabRear, type LabBikeId } from '../lab/bikes';
 import { createPlankWatch, lapEvent, runEvent, type Where } from './spots';
 import { bindPresses } from '../input/press';
@@ -562,11 +562,11 @@ async function start(index: number, sound: Sound, quick: boolean, bikeOverride?:
     if (run && status.state === 'running') {
       const strip = nextStarStrip(run.def.goal, run), goal = goalTag(status.progress);
       if (stripEl) paintStrip(stripEl, strip);
-      tag.hidden = !goal.text;
-      tagText.textContent = goal.text;
-      pipsEl.textContent = goal.pips ? '●'.repeat(goal.pips[0]) + '○'.repeat(goal.pips[1] - goal.pips[0]) : '';
-      chipLeft.hidden = strip.left === null;
-      if (strip.left !== null) chipLeft.textContent = `${strip.left} s`;
+      setHidden(tag, !goal.text);
+      setText(tagText, goal.text);
+      setText(pipsEl, goal.pips ? '●'.repeat(goal.pips[0]) + '○'.repeat(goal.pips[1] - goal.pips[0]) : '');
+      setHidden(chipLeft, strip.left === null);
+      if (strip.left !== null) setText(chipLeft, `${strip.left} s`);
     }
     showNextGate();
     const W = window.innerWidth, H = window.innerHeight, cam = r.look.camera;

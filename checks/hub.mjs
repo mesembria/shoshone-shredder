@@ -197,6 +197,11 @@ check(!!smallRow && starRow(smallRow, 1, [T2, T3]), `Table Row Small row: ★ �
 // ---- leaving for the map mid-run pays nothing and saves nothing (Review Focus 5)
 const beforeRun = await ev(`localStorage.getItem('shredder-save')`);
 await click('#hub .sheet .row[data-c="tableSmall"] button.go');
+await until(`window.__game?.modal() === 'countdown'`, 20000);
+// the 3-2-1 medals: the won star reads "✓ won" as plain text, the others keep their yellow price pill
+const medalPills = await ev(`[...document.querySelectorAll('#lab .count-medals .ui-medal')].map((m) => [m.classList.contains('won'), m.querySelector('.ui-pay').innerText.trim(), getComputedStyle(m.querySelector('.ui-pay')).backgroundColor])`);
+await shot('87-medals');
+check(medalPills.length === 3 && medalPills[0][0] && medalPills[0][1] === '✓ won' && medalPills[0][2] === 'rgba(0, 0, 0, 0)' && medalPills.slice(1).every(([w, t, bg]) => !w && /^\+\d+/.test(t) && bg === 'rgb(255, 241, 168)'), `medals: ★ "✓ won" has no pill, the unwon keep theirs (${JSON.stringify(medalPills)})`);
 check(await until(`!!window.__game && window.__game.run()?.def.id === 'tableSmall'`, 20000), 'Table Row Small again');
 check(await driveLane(10, 1) && await ev(`window.__game.run()?.count === 1`), 'one table cleared, the run still going');
 await click('#lab .menu .m-map');

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { nameHtml, starHtml, COG, mergeNames, stripHtml, medalsHtml } from '../src/game/pieces';
+import { nameHtml, starHtml, COG, mergeNames, stripHtml, medalsHtml, stripKey, setText, setHidden } from '../src/game/pieces';
 
 describe('pieces', () => {
   it('hill icons keep the arrow as text', () => {
@@ -43,5 +43,22 @@ describe('pieces', () => {
     expect(h).toContain('✓ won');
     expect(h).toContain(`+90 ${COG}`);
     expect(h).toContain('1,500 points');
+  });
+});
+
+describe('strip change detection', () => {
+  const base = { kind: 'points', next: 2, full: false, have: '1,200', fill: 0.5, open: 0.2, target: '1,500', red: false, left: null } as const;
+  it('same key when nothing a viewer could see changed', () => {
+    expect(stripKey({ ...base, fill: 0.5 + 1 / 2000 })).toBe(stripKey(base));
+    expect(stripKey({ ...base, fill: 0.5 + 1 / 200 })).not.toBe(stripKey(base));
+    expect(stripKey({ ...base, have: '1,201' })).not.toBe(stripKey(base));
+    expect(stripKey({ ...base, red: true })).not.toBe(stripKey(base));
+  });
+  it('setText and setHidden write only on change', () => {
+    let writes = 0, text = 'a', hidden = false;
+    const el = { get textContent() { return text; }, set textContent(v: string) { writes++; text = v; }, get hidden() { return hidden; }, set hidden(v: boolean) { writes++; hidden = v; } };
+    setText(el as unknown as Element, 'a'); setText(el as unknown as Element, 'b'); setText(el as unknown as Element, 'b');
+    setHidden(el as unknown as HTMLElement, false); setHidden(el as unknown as HTMLElement, true);
+    expect(writes).toBe(2 + 0);
   });
 });

@@ -513,21 +513,23 @@ describe('the trick speed boost', () => {
     const bobble = jump('enduro', 'up', 3);
     expect(bobble.landed).toBe('bobble');
     expect(bobble.s.boost).toBe(0);
-    // a finished trick, then a fall onto a nose-down bike: a wipeout
-    const s = bikeAt('dirtjumper', 'flat', 10, 7);
-    T.trickBoost = 3;
-    s.grounded = false;
-    s.autoLand = false;
-    s.pos.y = 2;
-    s.vy = 0;
-    let landed: string | undefined, boosted = false;
-    for (let n = 0; n < 200 && !landed; n++) {
-      s.pitch = 1.3;
-      landed = stepLab(s, intent({ swipe: n === 0 ? 'up' : null }), DT, phys, []).landed;
-      if (s.boost > 0) boosted = true;
+    // a finished trick, then a fall onto a nose-down bike: a wipeout, whichever steep pitch it falls at
+    for (const pitch of [1.1, 1.3, 1.5]) {
+      const s = bikeAt('dirtjumper', 'flat', 10, 7);
+      T.trickBoost = 3;
+      s.grounded = false;
+      s.autoLand = false;
+      s.pos.y = 2;
+      s.vy = 0;
+      let landed: string | undefined, boosted = false;
+      for (let n = 0; n < 200 && !landed; n++) {
+        s.pitch = pitch;
+        landed = stepLab(s, intent({ swipe: n === 0 ? 'up' : null }), DT, phys, []).landed;
+        if (s.boost > 0) boosted = true;
+      }
+      expect(landed === 'wipeout' || landed === 'big', `pitch ${pitch}`).toBe(true);
+      expect(boosted, `pitch ${pitch}`).toBe(false);
     }
-    expect(landed === 'wipeout' || landed === 'big').toBe(true);
-    expect(boosted).toBe(false);
   });
 
   it('a trick at top speed never leaves the bike slower than no trick', () => {

@@ -691,7 +691,12 @@ for (const def of CHALLENGES) {
   if (load.join() === 'a,b,c,d') {
     if (!a) rule.push(rows.find((r) => r[0] === 'a')?.[2] === null && !lock ? '1★ needs a bike the hardtail can\'t be (ruling)' : '1★ not reachable by (a)');
     else if (st(a) > 1 && !get('a+')) rule.push(`(a) reaches ${st(a)}★`);
-    if (b && st(b) < 2) rule.push('2★ not reachable by (b)');
+    else if (st(a) < 1) rule.push('1★ not reachable by (a): it finished with 0★');
+    // the lock build opens the lock, so what it scores is a design question (see the issue on lock builds), but it is no
+    // longer hidden: say it, without breaking the rule
+    if (get('a+') && st(get('a+')) > 1) console.log(`  note: the lock build reaches ${st(get('a+'))}★ (open question: does a lock build get to 2★?)`);
+    if (full.length && !b) rule.push('(b) never finished');
+    else if (b && st(b) < 2) rule.push('2★ not reachable by (b)');
     if (st(b) >= 3) rule.push('(b) reaches 3★');
     if (st(c) >= 3) rule.push('(c) reaches 3★');
     if (st(d) < 3) rule.push('3★ not reachable by (d)');

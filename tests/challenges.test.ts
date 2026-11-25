@@ -286,7 +286,9 @@ describe('locks', () => {
     const p = withStars(fresh, { goatUp: 2, goatDown: 2 });
     expect(canStart(p, ch('boulderDash'), stockOf('enduro'))).toBe(true);
     expect(canStart(p, ch('boulderDash'), stockOf('hardtail'))).toBe(false);
-    expect(tick.length).toBe(2); // tick takes the run and the step, never the profile or the loadout
+    // tick takes the run and the step, never the profile or the loadout: extra arguments change nothing
+    const step: Tick = { dt: 1, run: 'start' }, loose = tick as unknown as (...a: unknown[]) => Status;
+    expect(loose(startRun(ch('boulderDash')), step, stockOf('hardtail'), p)).toEqual(tick(startRun(ch('boulderDash')), step));
     expect(play(ch('boulderDash'), [{ dt: 1, run: 'start' }, wait(20), { dt: 1, run: 'finish' }])).toEqual({ state: 'done', stars: 1 });
     const xl = startRun(ch('tableXL')), xlGoal = ch('tableXL').goal as { points: number[] };
     expect(tick(xl, { dt: 2, landed: 'clean', airTime: 1, fromLip: true, bank: xlGoal.points[2] })).toEqual({ state: 'done', stars: 3 });

@@ -147,7 +147,7 @@ const counting = await ev(`(() => { const m = document.querySelector('#lab .coun
 await shot('84-countdown');
 const pts = N.small.map((n) => `${n.toLocaleString('en-US')} points`);
 check(!!counting && counting.shown && counting.medals === 3 && pts.every((p) => counting.text.includes(p)) && counting.sign.includes('Table Row Small') && counting.next === '1' && !counting.menu && !counting.tag, `the countdown: the sign, the strip at rest (no goal tag yet), three medals with what each star needs, no menu (${JSON.stringify(counting)})`);
-check(await until(`window.__game.run()?.def.id === 'tableSmall'`, 5000), 'Table Row Small runs after the countdown');
+check(await until(`window.__game?.run()?.def.id === 'tableSmall'`, 5000), 'Table Row Small runs after the countdown');
 check(planted && await ev(`window.__game.run().points === 0 && window.__lab.s.combo.count === 0`), `a combo ridden in doesn't count (planted in the countdown ${planted}, points ${await ev('window.__game.run().points')})`);
 check(!(await shown('#lab .count-medals')), 'the medals go at GO');
 // (headless software rendering is slow, so wait for the strip's own text rather than a fixed time)
@@ -168,7 +168,7 @@ check(JSON.stringify(menu) === JSON.stringify(['🗺 Map', '📍 Mesa Jump Park'
 
 // ---- finish Table Row Small: stars, the 1-star pay, saved
 check(await driveLane(10), 'Table Row Small: rode the three tables');
-check(await until(`window.__game.modal() === 'card'`, 4000), 'the result card shows');
+check(await until(`window.__game?.modal() === 'card'`, 4000), 'the result card shows');
 await shot('86-result');
 const result = await text('#lab .card');
 const res = await ev(`({ sign: document.querySelector('#lab .card .ui-sign')?.innerText ?? '', big: document.querySelector('#lab .card .bigstars')?.innerText.replace(/\\s+/g, '') ?? '', have: document.querySelector('#lab .card .ui-strip .have')?.innerText ?? '' })`);
@@ -228,7 +228,11 @@ await until(`!!window.__game`, 20000);
 await ev(`history.back()`);
 // Chromium does restore this page from the cache, but under the dev server Vite's client then reloads it (its socket
 // was closed while cached), so let that settle; the simulated restore below is the exact proof
-await sleep(1500);
+// (the page's own start time changes with every load, so wait until it holds still, not for a fixed time)
+await until(`location.search === '?rider=0' && !!document.querySelector('#hub .pin') && document.readyState === 'complete'`, 8000);
+for (let t0 = Date.now(), seen = null, since = Date.now(); Date.now() - t0 < 10000 && Date.now() - since < 1500; await sleep(100)) {
+  const o = await ev(`performance.timeOrigin`); if (o !== seen) { seen = o; since = Date.now(); }
+}
 await until(`location.search === '?rider=0' && !!document.querySelector('#hub .pin')`, 8000);
 console.log(`(info) back to the map: ${await ev(`performance.getEntriesByType('navigation')[0]?.type`)}`);
 await click('#hub .pin[data-place="shredderHills"]'); await sleep(200);
@@ -295,7 +299,7 @@ const afterSwap = await ev(`JSON.parse(localStorage.getItem('shredder-save')).ri
 check(afterSwap?.[1]?.name === 'Outside' && afterSwap[1].cogs === 999 && afterSwap[1].stars?.goatUp === 2, `a swap leaves the other rider as saved elsewhere (${JSON.stringify(afterSwap?.[1])})`);
 check(afterSwap?.[0]?.cogs === 140 && afterSwap[0].riding === 'hardtail', `a swap keeps this rider's cogs from elsewhere (${JSON.stringify(afterSwap?.[0] && { cogs: afterSwap[0].cogs, riding: afterSwap[0].riding })})`);
 await ev(`window.__game.start('tableSmall')`);
-check(await until(`window.__game.run()?.def.id === 'tableSmall'`, 8000) && await driveLane(10) && await until(`window.__game.modal() === 'card'`, 4000), 'Table Row Small finishes on that page');
+check(await until(`window.__game?.run()?.def.id === 'tableSmall'`, 8000) && await driveLane(10) && await until(`window.__game?.modal() === 'card'`, 4000), 'Table Row Small finishes on that page');
 const afterPay = await ev(`JSON.parse(localStorage.getItem('shredder-save')).riders`);
 check(afterPay?.[0]?.cogs === 140 + T1 && afterPay[0].stars?.tableSmall === 1 && afterPay[1]?.name === 'Outside' && afterPay[1].cogs === 999, `paid on top of the outside cogs (140 + ${T1}), the other rider intact (${JSON.stringify(afterPay?.map((p) => ({ name: p.name, cogs: p.cogs })))})`);
 await setSave(rider('Rider 1', 0), rider('Rider 2', 0));
@@ -546,7 +550,7 @@ check(await ev(`!document.getElementById('who') && !document.querySelector('#hub
 check(await ev(`localStorage.getItem('shredder-save')`) === before, '?bike= left the save as it was');
 await go('?bike=enduro&go=tableSmall');
 check(await until(`!!window.__game && window.__game.run()?.def.id === 'tableSmall'`, 20000), '?bike=enduro&go=tableSmall runs');
-check(await driveLane(10) && await until(`window.__game.modal() === 'card'`, 4000), '?bike=: Table Row Small finishes');
+check(await driveLane(10) && await until(`window.__game?.modal() === 'card'`, 4000), '?bike=: Table Row Small finishes');
 const quickResult = await text('#lab .card');
 check(!!quickResult && quickResult.includes('★') && !quickResult.includes('⚙'), `?bike= result: stars, no pay (${JSON.stringify(quickResult)})`);
 check(await ev(`localStorage.getItem('shredder-save')`) === before, '?bike= finishing a challenge left the save as it was');

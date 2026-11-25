@@ -3,8 +3,7 @@
 // descent comes back west beside it; Hairpin Hollow zigzags up to the south of it, to the shoulder's south-west end
 // (10.7 m), where a spur rides on to the shoulder; a connector (no challenge, just riding) climbs east-north-east along
 // the ridge from Goat Ladder's top to the summit (20 m), where Boulder Dash drops west down the ridge's north flank and
-// runs out north of Goat Ladder's first leg to the trailhead. The game rides it with ?place=hill until places are wired
-// up properly.
+// runs out north of Goat Ladder's first leg to the trailhead.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { C } from '../../look/palette';

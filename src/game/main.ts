@@ -120,7 +120,7 @@ async function start(index: number, sound: Sound, quick: boolean, bikeOverride?:
   let tuneOpen = false;
   let insideSpot: string | null = startAt; // the ring we're in (or just warped to), so it doesn't pop up again
   let airFromLip = false, wasCrash = false;
-  let prevWhere: Where = { x: 0, y: 0, z: 0, grounded: true }, plank = createPlankWatch([]);
+  let prevWhere: Where = { x: 0, y: 0, z: 0, grounded: true }, plank: ReturnType<typeof createPlankWatch> = () => null;
   // a timed run's progress along its route (stay on the trail): from its start line until the run ends; ended keeps the
   // last one for the result card's how-close line
   let track: RouteTrack | null = null, ended: RouteTrack | null = null;

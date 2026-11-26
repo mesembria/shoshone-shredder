@@ -178,6 +178,15 @@ describe('stay on the trail', () => {
     expect(m.t.furthest).toBeGreaterThan(top + 19);
   });
 
+  it('Hairpin ↕: a tumble that ends on the top platform gets up where it ends', () => {
+    const r = route('hairpinBoth'), m = rider(r), plat = hill.trails.hairpinTop;
+    m.jumpTo(r.top!);
+    m.s.crash = { outcome: 'wipeout', t: 0 };
+    const p = trailPoint(plat, plat.path.length / 2);
+    m.to(p.x, p.z, plat.path.at(plat.path.length / 2).yaw);
+    expect(m.s.getUpAt).toBeNull();
+  });
+
   it("a crash that tumbles off the route gets up where you'd got to", () => {
     const r = route('hairpinDown'), m = rider(r), side = clearSide(r, 30, 9);
     m.jumpTo(30);

@@ -1,4 +1,4 @@
-// The three bikes: the Bolinas trail bike, a dirt jumper and an enduro (the Bayview was dropped: "basically the same"
+// The bikes: the Hand-me-down Hardtail, the Bolinas trail bike, a dirt jumper and an enduro (the Bayview was dropped: "basically the same"
 // as the Bolinas; the old prototype still has it in BIKES). A bike type is a set of overrides on the Tune settings, so
 // the two new ones feel like different machines: the dirt jumper pops, spins and snaps round but is awful downhill;
 // the enduro is the reverse.

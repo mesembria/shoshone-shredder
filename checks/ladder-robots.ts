@@ -1,4 +1,4 @@
-// The ladder check: robot riders on every challenge, on four loadouts, fed through the game's own challenge code (the
+// The ladder check: robot riders on every challenge, on five loadouts (a, b, c, c+ and d, with a+ when a lock needs it), fed through the game's own challenge code (the
 // same ticks main.ts sends, the downhill boost on Downhill runs). Prints each loadout's best result and whether the
 // star targets hold the ladder:
 //   (a) bare hardtail: 1★ (or the cheapest hardtail build that opens the lock), never 2★
@@ -31,7 +31,7 @@ const { CHALLENGES, DOWNHILL_BOOST, startRun, tick, trickTick } = await import(`
 const { runEvent, lapEvent, createPlankWatch, segmentsCross } = await import(`${P}/game/spots.ts`);
 const { inZone, inZoneHeading, trailPoint, obstacleSpans } = await import(`${P}/world/trail.ts`);
 const { bumpers } = await import(`${P}/lab/course.ts`);
-const { pastEnd } = await import('./follow.ts');
+const { pastEnd, blockedProbe, offsetsAcross, planLine } = await import('./follow.ts');
 const { statsFor } = await import(`${P}/game/stats.ts`);
 const { HAIRPIN: HP } = await import(`${P}/world/trails/hairpin.ts`);
 // where the park's features are
@@ -63,16 +63,7 @@ const HT = course.trails, hUp = HT.goatUp, hDown = HT.goatDown, hHp = HT.hairpin
 const GT = Math.PI * SR; // a Goat Ladder switchback's length
 // the probe for rocks, stretched along the trail's heading instead of along x; the log counts as clear (it's hopped)
 const logAlong = (L: any, x: number, z: number) => Math.abs((x - L.pos.x) * Math.cos(L.yaw) - (z - L.pos.z) * Math.sin(L.yaw));
-const blockedAlongBy = (r1: number, skipLogs: boolean) => (x: number, z: number, yaw: number) => {
-  const fx = Math.cos(yaw), fz = -Math.sin(yaw);
-  for (const r of [0, 0.3, 0.55]) for (let k = 0; k < (r ? 10 : 1); k++) {
-    const a = (k / 10) * Math.PI * 2, ca = r * Math.cos(a) * r1, sa = r * Math.sin(a), px = x + ca * fx - sa * fz, pz = z + ca * fz + sa * fx;
-    const h = castDown(phys, px, 40, pz, 60);
-    if (h && (h.surface === 'wall' || (h.surface === 'rock' && !(skipLogs && C.ledges.some((L: any) => L.log && logAlong(L, px, pz) < 1.5))))) return true;
-    if (inClump(px, pz)) return true;
-  }
-  return false;
-};
+const blockedAlongBy = (r1: number, skipLogs: boolean) => blockedProbe(phys, { r1, rMax: 0.55, n: 10, from: 40, depth: 60, rockOk: skipLogs ? (px, pz) => C.ledges.some((L: any) => L.log && logAlong(L, px, pz) < 1.5) : undefined, also: inClump });
 const climbAlong = blockedAlongBy(1.3, false), downAlong = blockedAlongBy(1.6, true);
 // a point u along trail t, off to the right; past its end it carries on straight (onto the flat)
 const at = (t: any, u: number, off = 0): Pt => {
@@ -81,31 +72,11 @@ const at = (t: any, u: number, off = 0): Pt => {
   return [e.x + off * Math.sin(y), e.z + off * Math.cos(y)];
 };
 // the line along t from u0 to u1
-function planAlong(t: any, u0: number, u1: number, blocked: (x: number, z: number, yaw: number) => boolean, loosePref = 0, spread = 1.2): Pt[] {
-  const N = Math.floor((u1 - u0) / 0.25), D: number[] = [];
-  for (let d = -spread; d <= spread + 1e-6; d += 0.1) D.push(d);
-  const cost: number[][] = [], from: number[][] = [];
-  for (let i = 0; i <= N; i++) {
-    const u = u0 + i * 0.25, yaw = t.path.at(u).yaw;
-    cost.push([]); from.push([]);
-    for (let j = 0; j < D.length; j++) {
-      const [x, z] = at(t, u, D[j]);
-      const c = (blocked(x, z, yaw) ? 1e6 : 0) + 0.03 * Math.abs(D[j]) + (C.loose.some((a: any) => inside(a, x, z)) ? loosePref : 0);
-      if (i === 0) { cost[0].push(c + 2 * Math.abs(D[j])); from[0].push(-1); continue; }
-      let best = 1e12, bj = -1;
-      for (let k = Math.max(0, j - 2); k <= Math.min(D.length - 1, j + 2); k++) {
-        const v = cost[i - 1][k] + 0.4 * Math.abs(k - j);
-        if (v < best) { best = v; bj = k; }
-      }
-      cost[i].push(best + c); from[i].push(bj);
-    }
-  }
-  let j = 0;
-  for (let k = 0; k < D.length; k++) if (cost[N][k] + 2 * Math.abs(D[k]) < cost[N][j] + 2 * Math.abs(D[j])) j = k;
-  const out: Pt[] = [];
-  for (let i = N; i >= 0; i--) { out.push(at(t, u0 + i * 0.25, D[j])); j = from[i][j]; }
-  return out.reverse();
-}
+const planAlong = (t: any, u0: number, u1: number, blocked: (x: number, z: number, yaw: number) => boolean, loosePref = 0, spread = 1.2): Pt[] =>
+  planLine(u0, u1, offsetsAcross(spread), (u, d) => {
+    const [x, z] = at(t, u, d);
+    return (blocked(x, z, t.path.at(u).yaw) ? 1e6 : 0) + 0.03 * Math.abs(d) + (C.loose.some((a: any) => inside(a, x, z)) ? loosePref : 0);
+  }, (u, d) => at(t, u, d), { window: 2, startBias: 2, endBias: 2 });
 // the centreline from u0 to u1 (backwards when u1 < u0), every 0.25 m: the switchbacks, ridden down the middle
 const centre = (t: any, u0: number, u1: number): Pt[] => {
   const n = Math.ceil(Math.abs(u1 - u0) / 0.25), o: Pt[] = [];

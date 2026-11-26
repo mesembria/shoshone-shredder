@@ -5,7 +5,7 @@
 const P = new URL('../src', import.meta.url).pathname;
 const { buildPlace } = await import(`${P}/world/places/index.ts`);
 const { inZone, ledgeAhead, trailPoint } = await import(`${P}/world/trail.ts`);
-const { pathSteer, steerToward } = await import('./follow.ts');
+const { pathSteer, steerToward, blockedProbe, offsetsAcross, planLine } = await import('./follow.ts');
 const { createLabState, placeBike, stepLab } = await import(`${P}/lab/bike.ts`);
 const { createPhysics, castDown } = await import(`${P}/world/physics.ts`);
 const { BIKES } = await import(`${P}/rules/bikes.ts`);
@@ -34,43 +34,15 @@ const hairpins: number[] = [];
 { let u = 0; for (const pc of up.path.pieces) { if (pc.radius === SR) hairpins.push(u); u += pc.len; } }
 const onHairpin = (u: number, pad = 0) => hairpins.some((h) => u > h - pad && u < h + TURN + pad);
 // the probe for rocks, stretched along the trail's heading
-const blockedAlong = (x: number, z: number, yaw: number) => {
-  const fx = Math.cos(yaw), fz = -Math.sin(yaw);
-  for (const r of [0, 0.3, 0.55]) for (let k = 0; k < (r ? 10 : 1); k++) {
-    const a = (k / 10) * Math.PI * 2, ca = r * Math.cos(a) * 1.3, sa = r * Math.sin(a);
-    const h = castDown(phys, x + ca * fx - sa * fz, 20, z + ca * fz + sa * fx, 40);
-    if (h && (h.surface === 'wall' || h.surface === 'rock')) return true;
-  }
-  return false;
-};
+const blockedAlong = blockedProbe(phys, { r1: 1.3, rMax: 0.55, n: 10, from: 20, depth: 40 });
 // dynamic programming over sideways offsets
 let WIDE = 0;
 // best line along the curved climb, u0 to u1, held to the middle on the switchbacks as the old robot rode them
-function planTrail(t: any, u0: number, u1: number, loosePref: number): [number, number][] {
-  const N = Math.floor((u1 - u0) / 0.25), D: number[] = [];
-  for (let d = -1.2 - WIDE; d <= 1.2001 + WIDE; d += 0.1) D.push(d);
-  const cost: number[][] = [], from: number[][] = [];
-  for (let i = 0; i <= N; i++) {
-    const u = u0 + i * 0.25, yaw = t.path.at(u).yaw, mid = onHairpin(u) ? 100 : 0;
-    cost.push([]); from.push([]);
-    for (let j = 0; j < D.length; j++) {
-      const p = trailPoint(t, u, D[j]);
-      let c = (blockedAlong(p.x, p.z, yaw) ? 1e6 : 0) + (WIDE ? (Math.abs(D[j]) > 1.6 ? -0.3 : 0) : 0.03 * Math.abs(D[j])) + (C.loose.some((a: any) => inside(a, p.x, p.z)) ? loosePref : 0) + mid * Math.abs(D[j]);
-      if (i === 0) { cost[0].push(c + 2 * Math.abs(D[j])); from[0].push(-1); continue; }
-      let best = 1e12, bj = -1;
-      for (let k = Math.max(0, j - 2); k <= Math.min(D.length - 1, j + 2); k++) {
-        const v = cost[i - 1][k] + 0.4 * Math.abs(k - j);
-        if (v < best) { best = v; bj = k; }
-      }
-      cost[i].push(best + c); from[i].push(bj);
-    }
-  }
-  let j = 0;
-  for (let k = 0; k < D.length; k++) if (cost[N][k] < cost[N][j]) j = k;
-  const out: [number, number][] = [];
-  for (let i = N; i >= 0; i--) { const p = trailPoint(t, u0 + i * 0.25, D[j]); out.push([p.x, p.z]); j = from[i][j]; }
-  return out.reverse();
-}
+const planTrail = (t: any, u0: number, u1: number, loosePref: number): [number, number][] =>
+  planLine(u0, u1, offsetsAcross(1.2 + WIDE), (u, d) => {
+    const p = trailPoint(t, u, d), mid = onHairpin(u) ? 100 : 0;
+    return (blockedAlong(p.x, p.z, t.path.at(u).yaw) ? 1e6 : 0) + (WIDE ? (Math.abs(d) > 1.6 ? -0.3 : 0) : 0.03 * Math.abs(d)) + (C.loose.some((a: any) => inside(a, p.x, p.z)) ? loosePref : 0) + mid * Math.abs(d);
+  }, (u, d) => { const p = trailPoint(t, u, d); return [p.x, p.z]; }, { window: 2, startBias: 2 });
 const path = (loosePref: number) => planTrail(up, 1, up.path.length, loosePref);
 const cross = (p: number[], q: number[], g: any) => {
   const side = (o: number[], u: number[], v: number[]) => Math.sign((u[0] - o[0]) * (v[1] - o[1]) - (u[1] - o[1]) * (v[0] - o[0]));

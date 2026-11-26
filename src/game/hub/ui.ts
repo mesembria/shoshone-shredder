@@ -5,7 +5,7 @@ import { loadGame, saveGame, type Profile, type Store } from '../progress';
 
 export const SLOT_NAMES: Record<Slot, string> = { suspension: 'Suspension', tires: 'Tires', brakes: 'Brakes', cockpit: 'Cockpit', drivetrain: 'Drivetrain' };
 export const STATS = STAT_GROUPS.flatMap((g) => g.stats);
-export const esc = (t: string) => t.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+export { esc } from '../esc';
 export const hex = (c: number) => '#' + c.toString(16).padStart(6, '0');
 export const num = (n: number, d = 1) => String(+n.toFixed(d));
 

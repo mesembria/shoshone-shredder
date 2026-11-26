@@ -56,7 +56,7 @@ export interface PumpTrack { x: number; z: number; R: number; width: number; hal
 // The narrow plank is The Plank's: a gap in the middle (x from gap[0] to gap[1]) to hop out of one manual and into the
 // next. The wide one has no gap: practice.
 export interface Plank { z: number; width: number; x0: number; x1: number; y: number; gap?: [number, number] }
-export interface Slalom { x0: number; step: number; swing: number; count: number; z?: number } // z: the line the gates swing about (0 on the old street)
+export interface Slalom { x0: number; step: number; swing: number; count: number; z?: number } // z: the line the gates swing about (0 when a place doesn't set it)
 
 export const DIRT = 0xb08f68;
 const DIRT_DARK = 0x97785a, RED = 0xd9534f, BLUE = 0x3d6fb6;
@@ -215,11 +215,10 @@ export function lipBar(p: THREE.Object3D, x: number, y: number, z: number, width
 }
 
 interface JumpSize { H: number; lip: number; table: number; landDeg: number; landR: number; width: number }
-export const JUMPS: Record<'S' | 'M' | 'L' | 'H2' | 'XL', JumpSize> = {
+export const JUMPS: Record<'S' | 'M' | 'L' | 'XL', JumpSize> = {
   S: { H: 0.7, lip: 26, table: 3.6, landDeg: 24, landR: 3, width: 3 },
   M: { H: 1.2, lip: 28, table: 7.5, landDeg: 26, landR: 4, width: 3.5 },
   L: { H: 1.8, lip: 30, table: 11, landDeg: 28, landR: 5, width: 4 },
-  H2: { H: 1.4, lip: 30, table: 8, landDeg: 26, landR: 5, width: 4.5 }, // the hill line's second jump: climbing a taller one costs too much speed
   XL: { H: 2.4, lip: 38, table: 11, landDeg: 34, landR: 6, width: 4.5 }, // big enough for a perfect-popped enduro backflip
 };
 
@@ -339,17 +338,18 @@ export function bumpers(spots: BumperSpot[], o: { firm?: boolean; ground?: (x: n
   };
 }
 
-// The pump track loop (two straights of rollers joined by berms) and the two skinnies, shared with the game's
-// lap line and plank checks.
-// Cone Zone's slalom on the street: gate i at x0 + i * step, swinging from side to side (z = ±swing). Ten close gates
+// The shapes of Cone Zone's slalom, the pump track loop (two straights of rollers joined by berms) and the two
+// skinnies, which the game's lap line and plank checks share. A place puts them where it wants them (z for the slalom
+// and planks, x and z for the pump track): the 0s here are placeholders.
+// Cone Zone's slalom: gate i at x0 + i * step, swinging from side to side (z = ±swing). Ten close gates
 // with a big swing so quick turning adds up, and bikes and riding separate (Nov 7; it was six gates 8 m apart, ±2 m)
 export const SLALOM: Slalom = { x0: -50, step: 7, swing: 2, count: 10 };
-export const PUMP_TRACK: PumpTrack = { x: 0, z: 90, R: 5.5, width: 3.6, half: 16, bank: 1.3 };
+export const PUMP_TRACK: PumpTrack = { x: 0, z: 0, R: 5.5, width: 3.6, half: 16, bank: 1.3 };
 // The narrow plank is The Plank's: a gap in the middle (x from gap[0] to gap[1]) to hop out of one manual and into the
 // next. The wide one has no gap: practice.
 export const PLANKS: Plank[] = [
-  { z: 56, width: 0.8, x0: -18.5, x1: -6.5, y: 0.4, gap: [-13.4, -11.6] }, // the top: a short ramp up before x0 and down after x1
-  { z: 61, width: 1.4, x0: -18.5, x1: -6.5, y: 0.4 },
+  { z: 0, width: 0.8, x0: -18.5, x1: -6.5, y: 0.4, gap: [-13.4, -11.6] }, // the top: a short ramp up before x0 and down after x1
+  { z: 0, width: 1.4, x0: -18.5, x1: -6.5, y: 0.4 },
 ];
 
 // The pump track: two straights of six rollers joined by banked turns, on a dirt pad where pedaling is off

@@ -14,6 +14,7 @@
 import '../style.css';
 import '../lab/lab.css';
 import './game.css';
+import { esc } from './esc';
 import * as THREE from 'three';
 import { createSound, type Sound } from '../view/sound';
 import { castDown } from '../world/physics';
@@ -50,7 +51,6 @@ const game = loadGame(store);
 const WELCOMED = 'shredder-welcomed-2'; // rider names that have seen the welcome card (kept apart from the save)
 const OLD_WELCOMED = 'shredder-welcomed'; // the old build's list: those riders had a save that was reset, so they get a "fresh start" line
 
-const esc = (t: string) => t.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const isBike = (id: string | null): id is LabBikeId => id !== null && Object.prototype.hasOwnProperty.call(LAB_BIKES, id);
 
 // ---- which mode
@@ -128,7 +128,7 @@ async function start(index: number, sound: Sound, quick: boolean, bikeOverride?:
   let tuneOpen = false;
   let insideSpot: string | null = startAt; // the ring we're in (or just warped to), so it doesn't pop up again
   let airFromLip = false, wasCrash = false;
-  let prevWhere: Where = { x: 0, y: 0, z: 0, grounded: true }, plank = createPlankWatch([]);
+  let prevWhere: Where = { x: 0, y: 0, z: 0, grounded: true }, plank: ReturnType<typeof createPlankWatch> = () => null;
   // a timed run's progress along its route (stay on the trail): from its start line until the run ends; ended keeps the
   // last one for the result card's how-close line
   let track: RouteTrack | null = null, ended: RouteTrack | null = null;

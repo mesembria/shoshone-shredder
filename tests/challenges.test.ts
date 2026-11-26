@@ -4,6 +4,7 @@ import { EMPTY_COMBO } from '../src/rules/tricks';
 import { loadout, partsFor, stockFitted, SLOTS } from '../src/game/catalog';
 import { LAB_ORDER } from '../src/lab/bikes';
 import { statsFor } from '../src/game/stats';
+import { pairHint } from '../src/game/challenges';
 import { loadoutOf, newProfile, type Profile } from '../src/game/progress';
 
 const def = (goal: ChallengeDef['goal'], group: ChallengeDef['group'] = 'park'): ChallengeDef => ({ id: 'test', name: 'Test', group, spot: 'Street', tell: '', goal });
@@ -276,7 +277,8 @@ describe('locks', () => {
     const ht = fresh.bikes.hardtail!;
     const fork: Profile = { ...withStars(fresh, { goatUp: 2, goatDown: 2 }), bikes: { hardtail: { ...ht, parts: ['hardtail-wide-bars'], fitted: { ...ht.fitted, suspension: 'hardtail-air-fork' } } } };
     // the fork is fitted but not owned, so it rides stock; the owned bars alone do not reach Stable 6, so the shop fork is named with them
-    expect(lockText(fork, ch('boulderDash'), loadoutOf(fork))).toBe(`Needs Stable ${STABLE} · get the Air fork and Wide bars`);
+    // the owned bars are "fit your", only the fork is something to buy
+    expect(lockText(fork, ch('boulderDash'), loadoutOf(fork))).toBe(`Needs Stable ${STABLE} · get the Air fork and fit your Wide bars`);
     const both: Profile = { ...fork, bikes: { hardtail: { ...fork.bikes.hardtail!, parts: ['hardtail-wide-bars', 'hardtail-air-fork'], fitted: { ...ht.fitted, suspension: 'hardtail-air-fork' } } } };
     expect(lockText(both, ch('boulderDash'), loadoutOf(both))).toBe(`Needs Stable ${STABLE} · fit your Wide bars`);
   });
@@ -290,5 +292,15 @@ describe('locks', () => {
     expect(play(ch('boulderDash'), [{ dt: 1, run: 'start' }, wait(20), { dt: 1, run: 'finish' }])).toEqual({ state: 'done', stars: 1 });
     const xl = startRun(ch('tableXL')), xlGoal = ch('tableXL').goal as { points: number[] };
     expect(tick(xl, { dt: 2, landed: 'clean', airTime: 1, fromLip: true, bank: xlGoal.points[2] })).toEqual({ state: 'done', stars: 3 });
+  });
+});
+
+describe('lock hints', () => {
+  const a = { id: 'a', name: 'Air fork' }, b = { id: 'b', name: 'Wide bars' };
+  it('a two-part hint buys only what is not owned', () => {
+    expect(pairHint(a, b, () => false)).toBe('get the Air fork and Wide bars');
+    expect(pairHint(a, b, () => true)).toBe('fit your Air fork and Wide bars');
+    expect(pairHint(a, b, (x) => x.id === 'a')).toBe('get the Wide bars and fit your Air fork');
+    expect(pairHint(a, b, (x) => x.id === 'b')).toBe('get the Air fork and fit your Wide bars');
   });
 });

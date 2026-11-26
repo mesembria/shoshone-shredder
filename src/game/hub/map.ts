@@ -21,7 +21,7 @@ export const pageUrl = (q: Record<string, string | number> = {}): string => {
 };
 
 // Where the home pins sit, as fractions of the map (like AREAS[].map): Lafayette out on the plains, the Shop below it.
-const HOME = { garage: { x: 0.8, y: 0.5 }, shop: { x: 0.88, y: 0.84 } };
+const HOME = { garage: { x: 0.8, y: 0.42 }, shop: { x: 0.88, y: 0.84 } };
 export const placeName = (station: string) => PLACE_NAMES[station] ?? station;
 const GROUPS: [Group, string][] = [['trail', 'Trail'], ['downhill', 'Downhill'], ['park', 'Park']];
 const SYMBOL = { green: '●', blue: '■', black: '◆' } as const;

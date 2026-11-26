@@ -102,6 +102,13 @@ function andNames(names: string[]): string {
   return names.join(' and ');
 }
 
+// "get the A and B", but a part you already own is "fit your", not something to buy
+export function pairHint(a: { id: string; name: string }, b: { id: string; name: string }, have: (x: { id: string }) => boolean | undefined): string {
+  const [x, y] = have(a) && !have(b) ? [b, a] : [a, b]; // the one to buy leads
+  if (have(x) === have(y)) return `${have(x) ? 'fit your' : 'get the'} ${x.name} and ${y.name}`;
+  return `get the ${x.name} and fit your ${y.name}`;
+}
+
 // Who could meet a stat, cheapest road first: the best other bike the rider owns as it's built, else an owned part for
 // the bike being ridden, else the cheapest single part of it still in the shop, else the cheapest pair of its parts in two
 // slots, and only then the best shop bike's stock (a bike costs far more than parts). "Meets" is canStart's own test.
@@ -123,7 +130,7 @@ function statTip(p: Profile, l: Loadout, [s, n]: [Stat, number]): string {
   const cost = (x: { id: string; price: number }) => (have(x) ? 0 : x.price);
   const pairs = parts.flatMap((x, i) => parts.slice(i + 1).filter((y) => y.slot !== x.slot && meets(fit(x, y))).map((y) => [x, y] as const));
   const pair = pairs.sort((a, b) => cost(a[0]) + cost(a[1]) - cost(b[0]) - cost(b[1]))[0];
-  if (pair) return ` · ${have(pair[0]) && have(pair[1]) ? 'fit your' : 'get the'} ${pair[0].name} and ${pair[1].name}`;
+  if (pair) return ` · ${pairHint(pair[0], pair[1], have)}`;
   const shop = best(LAB_ORDER.filter((b) => !p.bikes[b]), (b) => statOf(loadout(b, {}), s));
   return shop ? ` · try the ${SHEETS[shop].type}` : '';
 }
@@ -137,7 +144,7 @@ export function lockText(p: Profile, def: ChallengeDef, l: Loadout): string | nu
   if (left.length) return `Clear ${andNames(left.map(nameOf))} first`;
   if (n.stars && starsHeld(p) < n.stars) return `Ride ${n.stars} ★`;
   if (n.bike && !n.bike.includes(l.bike)) return `Needs the ${n.bike.map((b) => SHEETS[b].type).join(' or ')}`;
-  if (n.stat) return `Needs ${STAT_NAMES[n.stat[0]]} ${n.stat[1]}${statTip(p, l, n.stat)}`;
+  if (n.stat) return `Needs ${STAT_NAMES[n.stat[0]]} ${+n.stat[1].toFixed(1)}${statTip(p, l, n.stat)}`;
   return null;
 }
 

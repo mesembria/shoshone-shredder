@@ -7,6 +7,8 @@ export const SLOT_NAMES: Record<Slot, string> = { suspension: 'Suspension', tire
 export const STATS = STAT_GROUPS.flatMap((g) => g.stats);
 export { esc } from '../esc';
 export const hex = (c: number) => '#' + c.toString(16).padStart(6, '0');
+// A part's spec line without its name said twice: "Air fork" + "Air fork · 120 mm" reads "120 mm"
+export const specOf = (name: string, spec: string) => (spec.startsWith(`${name} · `) ? spec.slice(name.length + 3) : spec);
 export const num = (n: number, d = 1) => String(+n.toFixed(d));
 
 // One 0..10 bar; with a different `next`, the gain shows green and the loss red-striped

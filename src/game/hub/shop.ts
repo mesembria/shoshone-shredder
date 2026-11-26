@@ -10,6 +10,7 @@ import { LAB_BIKES, type LabBikeId } from '../../lab/bikes';
 import { COG, pageUrl } from './map';
 import { createStand, type Stand } from './stand';
 import { bar, esc, hex, num, SLOT_NAMES, STATS, writeRider } from './ui';
+import { bindPresses } from '../../input/press';
 
 type Tab = 'bikes' | 'parts';
 const BIKE_IDS = Object.keys(LAB_BIKES) as LabBikeId[];
@@ -154,35 +155,37 @@ export function showShop(hub: HTMLElement, store: Store, index: number): void {
     mount();
   });
 
+  // tapping anywhere on a part's card (not on a button) shows its bike on the stand; buttons press as the finger lifts,
+  // even with another finger on the glass (see input/press.ts)
   hub.addEventListener('click', (e) => {
     const el = e.target as HTMLElement;
-    const btn = el.closest<HTMLButtonElement>('.shop button');
-    if (btn?.disabled) return;
-    if (!btn) {
-      // tapping anywhere on a part's card shows its bike on the stand
-      const card = el.closest<HTMLElement>('.shop .part');
-      if (!card) return;
-      partsBike = card.dataset.bike as LabBikeId;
-    } else {
-      const c = btn.classList, card = btn.closest<HTMLElement>('.part');
-      if (c.contains('back')) return leave(pageUrl({ rider: index }));
-      if (c.contains('tab')) tab = btn.dataset.tab as Tab;
-      else if (c.contains('bike') || c.contains('bikehead')) {
-        if (tab === 'bikes') sel = btn.dataset.bike as LabBikeId;
-        else partsBike = btn.dataset.bike as LabBikeId;
-      } else if (c.contains('rider-toggle')) stand?.setRider((riderOn = !riderOn));
-      else if (c.contains('buy')) {
-        if (card) {
-          const p = partsFor(card.dataset.bike as LabBikeId).find((x) => x.id === card.dataset.part)!;
-          partsBike = p.bike;
-          if (writeRider(store, index, (r) => buyPart(r, p.id))) say('Bought! It\'s in your garage');
-        } else if (sel) {
-          const b = sel;
-          if (writeRider(store, index, (r) => buyAndRideBike(r, b))) say('Bought! You\'re riding it now');
-        }
-        read();
-      } else return;
-    }
+    if (el.closest('button')) return;
+    const card = el.closest<HTMLElement>('.shop .part');
+    if (!card) return;
+    partsBike = card.dataset.bike as LabBikeId;
+    showOnStand();
+    draw();
+  });
+  bindPresses(hub, (btn) => {
+    if (!btn.closest('.shop')) return;
+    const c = btn.classList, card = btn.closest<HTMLElement>('.part');
+    if (c.contains('back')) return leave(pageUrl({ rider: index }));
+    if (c.contains('tab')) tab = btn.dataset.tab as Tab;
+    else if (c.contains('bike') || c.contains('bikehead')) {
+      if (tab === 'bikes') sel = btn.dataset.bike as LabBikeId;
+      else partsBike = btn.dataset.bike as LabBikeId;
+    } else if (c.contains('rider-toggle')) stand?.setRider((riderOn = !riderOn));
+    else if (c.contains('buy')) {
+      if (card) {
+        const p = partsFor(card.dataset.bike as LabBikeId).find((x) => x.id === card.dataset.part)!;
+        partsBike = p.bike;
+        if (writeRider(store, index, (r) => buyPart(r, p.id))) say('Bought! It\'s in your garage');
+      } else if (sel) {
+        const b = sel;
+        if (writeRider(store, index, (r) => buyAndRideBike(r, b))) say('Bought! You\'re riding it now');
+      }
+      read();
+    } else return;
     showOnStand();
     draw();
   });

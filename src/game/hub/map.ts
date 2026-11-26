@@ -29,6 +29,7 @@ const SYMBOL = { green: '●', blue: '■', black: '◆' } as const;
 const pct = (f: number) => `${(f * 100).toFixed(2)}%`;
 export { COG } from '../pieces'; // the cog art (garage, shop and the ride import it from here)
 import { COG } from '../pieces';
+import { bindPresses } from '../../input/press';
 export const sym = (a: AreaDef) => `<span class="sym ${a.symbol}">${SYMBOL[a.symbol]}</span>`;
 
 // A slot per star: gold for each one won; stone with its price and the cog under each one still to win (a run that
@@ -155,11 +156,12 @@ export function showMap(hub: HTMLElement, store: Store, index: number): void {
     leaving = true;
     location.href = url;
   };
+  // a tap on the backdrop is no button: it closes the sheet through click. Every button presses as the finger lifts,
+  // even with another finger on the glass (see input/press.ts)
   hub.addEventListener('click', (e) => {
-    const el = e.target as HTMLElement;
-    if (el === scrim) return close();
-    const btn = el.closest<HTMLElement>('button');
-    if (!btn) return;
+    if (e.target === scrim) close();
+  });
+  bindPresses(hub, (btn) => {
     const place = btn.dataset.place, area = AREAS.find((a) => a.id === place);
     if (area) openArea(area);
     else if (place === 'garage') leave(pageUrl({ rider: index, view: 'garage' }));

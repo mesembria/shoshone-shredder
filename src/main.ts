@@ -3,13 +3,13 @@ import './style.css';
 import type { BikeId } from './rules/bikes';
 import { createSound } from './view/sound';
 import { startGame } from './game';
+import { bindPresses } from './input/press';
 
 const params = new URLSearchParams(location.search);
 const picker = document.getElementById('picker')!;
 
-picker.addEventListener('click', async (e) => {
-  const button = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-bike]');
-  if (!button) return;
+bindPresses(picker, async (button) => {
+  if (!button.dataset.bike) return;
   const sound = createSound();
   sound.unlock();
   picker.classList.add('loading');

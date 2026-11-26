@@ -10,7 +10,12 @@ const SP = process.argv[2] ?? mkdtempSync(`${tmpdir()}/shredder-check-`); // scr
 mkdirSync(`${SP}/shots`, { recursive: true });
 console.log('screenshots:', `${SP}/shots`);
 const BIN = `${process.env.HOME}/Library/Caches/ms-playwright/chromium-1248/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing`;
+try { await fetch('http://127.0.0.1:9338/json/version'); console.log('FAIL port 9338 is taken (a Chrome left by an earlier run?): stop it first'); process.exit(1); } catch { /* free */ }
 const chrome = spawn(BIN, ['--headless=new', '--remote-debugging-port=9338', `--user-data-dir=${mkdtempSync(`${SP}/profile-`)}`, '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-first-run', 'about:blank'], { stdio: 'ignore' });
+// a check that throws must not leave this Chrome holding the debugging port: the next run would drive the stale browser
+process.on('exit', () => chrome.kill());
+process.on('uncaughtException', (e) => { console.error(e); process.exit(1); });
+process.on('unhandledRejection', (e) => { console.error(e); process.exit(1); });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let targets;
 for (let i = 0; i < 40; i++) { try { targets = await (await fetch('http://127.0.0.1:9338/json')).json(); break; } catch { await sleep(250); } }
@@ -22,6 +27,10 @@ const send = (method, params = {}) => new Promise((r) => { const i = ++id; waiti
 const ev = async (e) => { const r = await send('Runtime.evaluate', { expression: e, awaitPromise: true, returnByValue: true }); if (r.result?.exceptionDetails) console.log('EVAL ERR', e.slice(0, 80), r.result.exceptionDetails.exception?.description); return r.result?.result?.value; };
 const shot = async (name) => { const r = await send('Page.captureScreenshot', { format: 'png' }); writeFileSync(`${SP}/shots/${name}.png`, Buffer.from(r.result.data, 'base64')); };
 const until = async (cond, ms = 8000) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (await ev(cond)) return true; await sleep(20); } return false; };
+// the same, but the time allowed is the ride's own (window.__lab.s.clock), not the wall's: headless Chromium on
+// swiftshader draws only a few frames a second, and a frame steps the ride at most 0.1 s, so a ride's second can take
+// several real ones (more on a busy machine). The wall limit only stops a stalled page hanging the check.
+const untilRide = async (cond, secs, wallMs = 60000) => { const c0 = await ev('window.__lab.s.clock'), t0 = Date.now(); while (Date.now() - t0 < wallMs) { if (await ev(cond)) return true; if ((await ev('window.__lab.s.clock')) - c0 > secs) return !!(await ev(cond)); await sleep(20); } return false; };
 const click = (sel) => ev(`(() => { const b = document.querySelector(${JSON.stringify(sel)}); if (!b) return 'missing ' + ${JSON.stringify(sel)}; b.click(); return 'ok'; })()`);
 const text = (sel) => ev(`document.querySelector(${JSON.stringify(sel)})?.innerText ?? null`);
 const W = 1180, row = 820 * 0.62;
@@ -75,7 +84,7 @@ check(await ev(`window.__lab.T.trickBoost === 0`), 'no downhill boost while just
 {
   const before = { clock: await ev('window.__lab.s.clock'), errs: errs.length };
   await swipe(0, 140); // swipe down on the street: a manual on the flat
-  await sleep(600);
+  await untilRide(`window.__lab.s.clock > ${before.clock + 0.6}`, 0.6, 15000); // 0.6 s of riding, however long that takes
   const after = await ev(`({ clock: window.__lab.s.clock, manual: window.__lab.s.manual, count: window.__lab.s.combo.count })`);
   check(after.clock > before.clock + 0.1 && errs.length === before.errs && after.count === 0, `a manual on the flat scores nothing and the ride keeps going (${JSON.stringify({ ...after, before, errs: errs.slice(before.errs) })})`);
 }
@@ -200,7 +209,7 @@ check(djBelow?.includes('Backflip'), `dirt jumper air hints offer the Backflip (
 await swipe(0, 90);
 check(await until(`window.__lab.s.move?.id === 'flip'`, 1500), `a backflip starts (${JSON.stringify(await ev('window.__lab.s.move'))})`);
 await shot('48-flip');
-await until(`window.__lab.s.grounded || !!window.__lab.s.crash`, 6000);
+await untilRide(`window.__lab.s.grounded || !!window.__lab.s.crash`, 4);
 check(await ev(`window.__lab.s.grounded && !window.__lab.s.crash && !!window.__game.run()`), `the backflip lands, and the run is still going (crash: ${JSON.stringify(await ev('!!window.__lab.s.crash'))})`);
 await ev(`document.querySelector('#lab .b-stop')?.click()`);
 await sleep(300);
@@ -247,7 +256,7 @@ await ev(`window.__game.start('goatDown')`);
 check(await until(`window.__game.run()?.def.id === 'goatDown'`, 8000), 'Goat Ladder ↓ runs again');
 await sleep(1500);
 await ev(`(() => { const s = window.__lab.s; s.pos.x += 3; window.__lab.s.crash = { outcome: 'wipeout', t: 0 }; })()`);
-check(await until(`!window.__lab.s.crash`, 25000) && await ev(`window.__game.run()?.def.id === 'goatDown' && window.__game.run().t > 1.5`), 'left alone, the rider gets up and the run keeps its time');
+check(await untilRide(`!window.__lab.s.crash`, 3) && await ev(`window.__game.run()?.def.id === 'goatDown' && window.__game.run().t > 1.5`), 'left alone, the rider gets up and the run keeps its time');
 await ev(`(() => { window.__lab.s.crash = { outcome: 'wipeout', t: 0 }; })()`);
 check(await until(`getComputedStyle(document.querySelector('#hud .again')).opacity === '1'`, 3000), 'Again eases in after the crash');
 const chip = await ev(`(() => { const b = document.querySelector('#hud .again'), c = getComputedStyle(b), r = b.getBoundingClientRect(); return { bg: c.backgroundColor, shadow: c.boxShadow, h: r.height, w: r.width }; })()`);
@@ -318,7 +327,7 @@ check(cutOff, 'the bike is off the trail beside it');
 check(await until(`!!window.__lab.s.crash`, 30000), 'riding 10 m off the trail crashes');
 await ev(`window.__lab.pad.key('ArrowUp', false, performance.now())`);
 check(/You cut the trail!/.test((await callout()) ?? ''), `and says why (${JSON.stringify(await callout())})`);
-check(await until(`!window.__lab.s.crash`, 6000), 'and gets up');
+check(await untilRide(`!window.__lab.s.crash`, 3), 'and gets up'); // a crash gets up after CRASH.getUpSeconds (2) of riding
 const gotUp = await ev(`(() => { const t = window.__game.track(), l = t.route.legs[0], p = l.trail.path.at(l.u0 - t.furthest), s = window.__lab.s; return Math.hypot(s.pos.x - p.x, s.pos.z - p.z); })()`);
 check(gotUp !== undefined && gotUp < 1, `it gets up on the trail where it had got to (${gotUp?.toFixed(2)} m away)`);
 await click('#lab .b-stop');

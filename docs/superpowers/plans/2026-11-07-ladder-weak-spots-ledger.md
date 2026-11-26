@@ -1,6 +1,6 @@
 # SDD ledger — plan: docs/superpowers/plans/2026-11-07-ladder-weak-spots.md
 Spec: docs/superpowers/specs/2026-11-07-ladder-weak-spots-design.md
-Setup: no .git in project (user's choice); snapshot repo GIT_DIR=.superpowers/sdd-git, base 3a3990f. Executor: inline (user approved "build it all here").
+Setup (updated Nov 24): real git repo now; work on a branch, commit normally, open a PR with `gh pr create`. Written when there was no `.git`; `.superpowers/sdd-git` snapshots are old history kept for reference.
 Pre-flight: no shared interfaces (each task touches its own place; Task 6 consumes only the finished targets)
 Task 1: Ruling: Table Row XL targets unchanged (200/800/1300) — robots already hold the rule with the Pop lock gone (a 650 1★, b 850 2★, d 1350 3★) — none if wrong beyond a retune
 Task 1: Ruling: Whoop-de-Doo 2★ 2000 → 2500 — bare hardtail reached 2250 (2★) once open; full hardtail 2750 keeps 2★ — if kids find 2★ too hard on the hardtail, lower toward 2300

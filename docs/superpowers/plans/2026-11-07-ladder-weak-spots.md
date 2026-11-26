@@ -18,7 +18,7 @@
 - New hazards are marked: yellow lip bars on every lip and gap edge; boulders taller than the Enduro plows (plow is under 0.35 m; use radius ≥ 0.5 with `rock()`).
 - Do not touch Goat Ladder (`goatUp`, `goatDown`, `goatBoth`) or its course.
 - Never run a full robot sweep at the same time as a browser check (CPU starvation fails browser lines).
-- No `.git` in the project. Snapshot with `GIT_DIR=$PWD/.superpowers/sdd-git GIT_WORK_TREE=$PWD git add -A src tests checks docs play.html && GIT_DIR=$PWD/.superpowers/sdd-git GIT_WORK_TREE=$PWD git commit -m "<msg>"`.
+- Git (updated Nov 24): the project is now a real repo. Work on a branch, commit normally (read "snapshot" steps as commits), push, open a PR with `gh pr create`; `main` is protected. The `.superpowers/sdd-git` snapshots mentioned in this document are old history kept for reference.
 - Dev server for browser checks: `http://127.0.0.1:5173` (never `localhost`).
 - Kid-facing text: short, plain, no jargon.
 

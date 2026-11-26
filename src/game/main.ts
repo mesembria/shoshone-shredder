@@ -88,7 +88,14 @@ function ride(index: number, bike?: LabBikeId): void {
   window.addEventListener('pageshow', (e) => {
     if (e.persisted) location.reload();
   });
-  void start(index, sound, !!bike, bike).then(() => who.remove());
+  start(index, sound, !!bike, bike).then(
+    () => who.remove(),
+    (err) => {
+      console.error('The ride failed to start', err);
+      who.className = '';
+      who.innerHTML = '<h1>Shoshone Shredder</h1><p class="loading-note">The ride would not start. Check that this browser can show 3D, then try again.</p><p><a href="' + pageUrl({}) + '">Back</a></p>';
+    },
+  );
 }
 
 // ---- riding
@@ -104,6 +111,7 @@ async function start(index: number, sound: Sound, quick: boolean, bikeOverride?:
   const tuning = params.get('tune') === '1';
   Object.assign(T, DEFAULTS);
   if (tuning) loadTune();
+  T.trickBoost = DEFAULTS.trickBoost; // a run turns this on (and stopRun off); a saved Tune value must not carry into free riding
   applyLoadout(loadoutOf(me));
   // the bike as ridden: with ?tune=1 the drawer can try another rear design on it (T.labRear)
   const rideSpec = () => (tuning ? withLabRear(loadoutOf(me).spec, T.labRear) : loadoutOf(me).spec);

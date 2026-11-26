@@ -106,8 +106,16 @@ export function buyAndRideBike(p: Profile, bike: LabBikeId): Profile | null {
 
 // ---- saving
 
-const isNums = (r: unknown): r is Record<string, number> =>
-  !!r && typeof r === 'object' && !Array.isArray(r) && Object.values(r).every((v) => typeof v === 'number' && Number.isFinite(v));
+const isObj = (r: unknown): r is Record<string, unknown> => !!r && typeof r === 'object' && !Array.isArray(r);
+
+// A table of counts (stars 0-3, times paid): each entry that is a whole, sensible number is kept, any other is dropped, so
+// one hand-edited value can't cost the rider the rest of their save (or show as "undefined" or NaN). Null if not a table.
+function cleanCounts(r: unknown, max: number): Record<string, number> | null {
+  if (!isObj(r)) return null;
+  const out: Record<string, number> = {};
+  for (const [k, v] of Object.entries(r)) if (typeof v === 'number' && Number.isFinite(v)) out[k] = Math.min(max, Math.max(0, Math.floor(v)));
+  return out;
+}
 
 // A v2 rider that passes the shape checks, or null (the caller then starts that rider fresh).
 function checkRider(raw: unknown): Profile | null {
@@ -115,7 +123,8 @@ function checkRider(raw: unknown): Profile | null {
   const r = raw as Record<string, unknown>;
   const bikesRaw = r.bikes;
   if (typeof r.name !== 'string' || typeof r.cogs !== 'number' || !Number.isFinite(r.cogs) || r.cogs < 0) return null;
-  if (!isBikeId(r.riding) || !bikesRaw || typeof bikesRaw !== 'object' || !isNums(r.stars) || !isNums(r.paid)) return null;
+  const stars = cleanCounts(r.stars, 3), paid = cleanCounts(r.paid, 1e6);
+  if (!isBikeId(r.riding) || !bikesRaw || typeof bikesRaw !== 'object' || !stars || !paid) return null;
   const bikes: Profile['bikes'] = {};
   for (const [id, b] of Object.entries(bikesRaw)) {
     const o = b as Partial<OwnedBike> | null;
@@ -126,7 +135,7 @@ function checkRider(raw: unknown): Profile | null {
     bikes[id] = { parts: [...o.parts], fitted, color: o.color };
   }
   if (!bikes.hardtail) bikes.hardtail = freshBike('hardtail');
-  return { name: r.name, cogs: r.cogs, riding: bikes[r.riding] ? r.riding : 'hardtail', bikes, stars: { ...r.stars }, paid: { ...r.paid } };
+  return { name: r.name, cogs: Math.floor(r.cogs), riding: bikes[r.riding] ? r.riding : 'hardtail', bikes, stars, paid };
 }
 
 // v1 saves, corrupt saves and broken riders all start fresh; a name survives whenever there is one.

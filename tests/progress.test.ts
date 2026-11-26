@@ -38,6 +38,18 @@ describe('loading', () => {
     expect(loadGame(memory()).riders).toHaveLength(2);
   });
 
+  it('keeps a rider whose star counts were hand-edited badly, with each bad count made sensible', () => {
+    const good = { ...newProfile('Ok'), cogs: 5.7 };
+    const store = memory();
+    store.setItem(SAVE_KEY, JSON.stringify({ version: 2, riders: [{ ...good, stars: { a: 2, b: null, c: 9, d: -1, e: 1.5, f: 'x' }, paid: { a: null, b: 2 } }, good] }));
+    const r = loadGame(store).riders[0];
+    expect(r.stars).toEqual({ a: 2, c: 3, d: 0, e: 1 });
+    expect(r.paid).toEqual({ b: 2 });
+    expect(r.cogs).toBe(5);
+    expect(payFor(r, 'b', 2).cogs).toBeGreaterThan(0);
+    expect(Number.isFinite(payFor(r, 'z', 3).cogs)).toBe(true);
+  });
+
   it('round-trips a v2 game', () => {
     const store = memory();
     const g = loadGame(store);
